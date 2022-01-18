@@ -2,6 +2,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use image::{RgbImage, Rgb};
 
+use syntect;
+
 fn main() {
 
     let background: Rgb<u8> = Rgb([0,0,0]);
@@ -66,5 +68,41 @@ fn main() {
 
     // Save the image as “fractal.png”, the format is deduced from the path
     imgbuf.save("output.png").unwrap();
-    
+
+
+    // test syntacitc highlighting
+        // use syntect::parsing::SyntaxSet;
+        // use syntect::highlighting::{ThemeSet, Style};
+        // use syntect::util::as_24_bit_terminal_escaped;
+        // use syntect::easy::HighlightFile;
+        // use std::io::BufRead;
+
+        // let ss = SyntaxSet::load_defaults_newlines();
+        // let ts = ThemeSet::load_defaults();
+
+        // // ??
+        //     // println!("{:?}",ts.themes);
+
+        //     // let keys: Vec<String> = ts.themes.into_keys().collect();
+        //     // println!("{:?}",keys);
+
+        //     // for key in ts.themes.IntoKeys(){
+        //     // }
+
+        // let mut highlighter = HighlightFile::new("src/main.rs", &ss, &ts.themes["Solarized (dark)"]).unwrap();
+        // let mut line = String::new();
+        // while highlighter.reader.read_line(&mut line).unwrap() > 0 {
+        //     {
+        //         let regions: Vec<(Style, &str)> = highlighter.highlight_lines.highlight(&line, &ss);
+        //         println!("{}", as_24_bit_terminal_escaped(&regions[..], true));
+
+
+        //         // for region in regions{
+        //         //     println!("{:?}",region.0.foreground);
+        //         // }
+               
+
+        //     } // until NLL this scope is needed so we can clear the buffer after
+        //     line.clear(); // read_line appends so we need to clear between lines
+        // }
 }
