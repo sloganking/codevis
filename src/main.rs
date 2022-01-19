@@ -10,8 +10,15 @@ use syntect;
 
 fn main() {
 
-    let filename = "src/main.rs";
-    // let filename = "input/digging.lua";
+    // let column_x = line: u32 / column_linelimit: u32;
+
+    // let y = (line: u32 % column_line_limit: u32) * 2;
+
+    
+
+
+    // let filename = "src/main.rs";
+    let filename = "input/digging.lua";
 
     // read file (for /n counting)
         let filename = filename;
@@ -19,9 +26,34 @@ fn main() {
         let file = File::open(filename).unwrap();
         let reader = BufReader::new(file);
 
+        let line_count = reader.lines().count();
+        let line_count = line_count as u32;
+
+    // determine image dimensions based on num of lines and contraints
+
+        // this is a constraint
+        let column_line_limit: u32 = 207;
+
+        // determine required number of columns
+            let mut required_columns = line_count / column_line_limit;
+            if line_count % column_line_limit != 0{
+                required_columns = required_columns + 1;
+            }
+
+        // remake immutable
+        let required_columns = required_columns;
+
     // initialize image
-        let imgx = 100;
-        let imgy = reader.lines().count() as u32 * 2;
+        // determine x
+            let column_width = 100;
+            let imgx: u32 = required_columns * column_width;
+
+        // determine y
+            let imgy: u32 = if line_count < column_line_limit{
+                line_count * 2
+            }else{
+                column_line_limit * 2
+            };
         
         // Create a new ImgBuf with width: imgx and height: imgy
         let mut imgbuf = RgbImage::new(imgx, imgy);
@@ -31,11 +63,16 @@ fn main() {
         let ts = ThemeSet::load_defaults();
         let mut highlighter = HighlightFile::new(filename, &ss, &ts.themes["Solarized (dark)"]).unwrap();
 
-    let mut cur_column_x = 0;
+    let mut cur_line_x = 0;
     let mut line = String::new();
     let mut cur_y = 0;
+    let mut line_num: u32 = 0;
     while highlighter.reader.read_line(&mut line).unwrap() > 0 {
         {
+            // get position of current line
+                let cur_y = (line_num % column_line_limit) * 2;
+                let cur_column_x_offset = (line_num / column_line_limit) * column_width;
+
             let regions: Vec<(Style, &str)> = highlighter.highlight_lines.highlight(&line, &ss);
 
             let background: Rgb<u8> = Rgb([regions[0].0.background.r, regions[0].0.background.g, regions[0].0.background.b]);
@@ -47,32 +84,32 @@ fn main() {
                 
 
                 for chr in region.1.chars(){
-                    if cur_column_x >= imgx || region.1.chars().count() == 0{
+                    if cur_line_x >= column_width || region.1.chars().count() == 0{
                         break;
                     }
     
                     // place pixel for character
                     if chr == ' ' || chr == '\n' {
-                        imgbuf.put_pixel(cur_column_x, cur_y, background);
-                        imgbuf.put_pixel(cur_column_x, cur_y + 1, background);
+                        imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
+                        imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
                     }else{
-                        imgbuf.put_pixel(cur_column_x, cur_y, char_color);
-                        imgbuf.put_pixel(cur_column_x, cur_y + 1, char_color);
+                        imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, char_color);
+                        imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, char_color);
                     }
 
-                    cur_column_x = cur_column_x + 1;
+                    cur_line_x = cur_line_x + 1;
                 }
             }
 
-            while cur_column_x < imgx{
-                imgbuf.put_pixel(cur_column_x, cur_y, background);
-                imgbuf.put_pixel(cur_column_x, cur_y + 1, background);
+            while cur_line_x < column_width{
+                imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
+                imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
 
-                cur_column_x = cur_column_x + 1;
+                cur_line_x = cur_line_x + 1;
             }
 
-            cur_column_x = 0;
-            cur_y = cur_y + 2;
+            cur_line_x = 0;
+            line_num = line_num + 1;
 
         } // until NLL this scope is needed so we can clear the buffer after
         line.clear(); // read_line appends so we need to clear between lines
@@ -80,7 +117,6 @@ fn main() {
 
     // Save the image as “fractal.png”, the format is deduced from the path
     imgbuf.save("output.png").unwrap();
-
 
     // test syntacitc highlighting
         // use syntect::parsing::SyntaxSet;
