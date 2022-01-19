@@ -10,8 +10,8 @@ use syntect;
 
 fn main() {
 
-    // let filename = "src/main.rs";
     let filename = "src/main.rs";
+    // let filename = "input/digging.lua";
 
     // read file (for /n counting)
         let filename = filename;
