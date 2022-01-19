@@ -5,14 +5,13 @@ use image::{RgbImage, Rgb};
 use syntect::parsing::SyntaxSet;
 use syntect::highlighting::{ThemeSet, Style};
 use syntect::easy::HighlightFile;
-// use std::io::BufRead;
 
 use syntect;
 
 fn main() {
 
     // let filename = "src/main.rs";
-    let filename = "input/digging.lua";
+    let filename = "src/main.lua";
 
     // read file (for /n counting)
         let filename = filename;
