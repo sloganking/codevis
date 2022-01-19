@@ -10,13 +10,6 @@ use syntect;
 
 fn main() {
 
-    // let column_x = line: u32 / column_linelimit: u32;
-
-    // let y = (line: u32 % column_line_limit: u32) * 2;
-
-    
-
-
     // let filename = "src/main.rs";
     let filename = "input/digging.lua";
 
@@ -65,8 +58,8 @@ fn main() {
 
     let mut cur_line_x = 0;
     let mut line = String::new();
-    let mut cur_y = 0;
     let mut line_num: u32 = 0;
+    let mut background = Rgb([0,0,0]);
     while highlighter.reader.read_line(&mut line).unwrap() > 0 {
         {
             // get position of current line
@@ -75,7 +68,7 @@ fn main() {
 
             let regions: Vec<(Style, &str)> = highlighter.highlight_lines.highlight(&line, &ss);
 
-            let background: Rgb<u8> = Rgb([regions[0].0.background.r, regions[0].0.background.g, regions[0].0.background.b]);
+            background = Rgb([regions[0].0.background.r, regions[0].0.background.g, regions[0].0.background.b]);
 
             for region in regions{
 
@@ -113,6 +106,18 @@ fn main() {
 
         } // until NLL this scope is needed so we can clear the buffer after
         line.clear(); // read_line appends so we need to clear between lines
+    }
+    while line_num < column_line_limit * required_columns {
+        // get position of current line
+        let cur_y = (line_num % column_line_limit) * 2;
+        let cur_column_x_offset = (line_num / column_line_limit) * column_width;
+
+        for cur_line_x in 0..column_width{
+            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
+            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
+        }
+
+        line_num = line_num + 1;
     }
 
     // Save the image as “fractal.png”, the format is deduced from the path
