@@ -59,21 +59,57 @@ fn main() {
 
     // determine image dimensions based on num of lines and contraints
 
-        // this is a constraint
-        let column_line_limit: u32 = 352;
+        // column_line_limit = 352;
 
-        // determine required number of columns
-            let mut required_columns = line_count / column_line_limit;
-            if line_count % column_line_limit != 0{
-                required_columns = required_columns + 1;
-            }
+        // this is a constraint
+            let target_aspect_ratio: f64 = 16.0/9.0;
+            // let target_aspect_ratio: f64 = 1284.0 / 2778.0; // iphone
+            let column_width = 100;
+
+        let mut last_checked_aspect_ratio: f64 = f64::MAX;
+        let mut column_line_limit= 1;
+        let mut required_columns;
+        let mut cur_aspect_ratio: f64 = column_width as f64 * line_count as f64 / (column_line_limit as f64 * 2.0);
+
+        while (last_checked_aspect_ratio - target_aspect_ratio).abs() > (cur_aspect_ratio - target_aspect_ratio).abs(){
+
+            // remember current aspect ratio
+                last_checked_aspect_ratio = cur_aspect_ratio;
+
+            // generate new aspect ratio
+                column_line_limit += 1;
+
+                // determine required number of columns
+                    required_columns = line_count / column_line_limit;
+                    if line_count % column_line_limit != 0{
+                        required_columns = required_columns + 1;
+                    }
+
+                cur_aspect_ratio = required_columns as f64 * column_width as f64 / (column_line_limit as f64 * 2.0);
+
+            // println!("cur_aspect_ratio: {}",cur_aspect_ratio);
+            // println!("(last_checked_aspect_ratio - target_aspect_ratio).abs(): {}", (last_checked_aspect_ratio - target_aspect_ratio).abs() );
+            // println!("(cur_aspect_ratio - target_aspect_ratio).abs(): {}", (cur_aspect_ratio - target_aspect_ratio).abs() );
+        
+        }
+
+        // revert to last aspect ratio
+            column_line_limit += 1;
+
+            // determine required number of columns
+                required_columns = line_count / column_line_limit;
+                if line_count % column_line_limit != 0{
+                    required_columns = required_columns + 1;
+                }
+
+        println!("Aspect ratio is {} off from target", (last_checked_aspect_ratio - target_aspect_ratio).abs());
 
         // remake immutable
-        let required_columns = required_columns;
+            let required_columns = required_columns;
+            let column_line_limit = column_line_limit;
 
     // initialize image
         // determine x
-            let column_width = 100;
             let imgx: u32 = required_columns * column_width;
 
         // determine y
