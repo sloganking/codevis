@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 use image::{RgbImage, Rgb};
 
 use syntect::parsing::SyntaxSet;
@@ -7,114 +8,161 @@ use syntect::highlighting::{ThemeSet, Style};
 use syntect::easy::HighlightFile;
 
 use syntect;
+use std::fs;
 
 fn main() {
 
-    let filename = "src/main.rs";
-    // let filename = "input/digging.lua";
+    // get list of valid files
+        // get list of files in ./input/ using glob
+            use glob::glob;
 
-    // read file (for /n counting)
-        let filename = filename;
-        // Open the file in read-only mode (ignoring errors).
-        let file = File::open(filename).unwrap();
-        let reader = BufReader::new(file);
+            let mut paths = Vec::new();
 
-    // initialize image
-        let imgx = 100;
-        let imgy = reader.lines().count() as u32 * 2;
-        
-        // Create a new ImgBuf with width: imgx and height: imgy
-        let mut imgbuf = RgbImage::new(imgx, imgy);
+            let file_delimiter = "";
+            let search_params = String::from("./input/**/*") + file_delimiter;
 
-    // initialize highlighting themes
-        let ss = SyntaxSet::load_defaults_newlines();
-        let ts = ThemeSet::load_defaults();
-        let mut highlighter = HighlightFile::new(filename, &ss, &ts.themes["Solarized (dark)"]).unwrap();
-
-    let mut cur_column_x = 0;
-    let mut line = String::new();
-    let mut cur_y = 0;
-    while highlighter.reader.read_line(&mut line).unwrap() > 0 {
-        {
-            let regions: Vec<(Style, &str)> = highlighter.highlight_lines.highlight(&line, &ss);
-
-            let background: Rgb<u8> = Rgb([regions[0].0.background.r, regions[0].0.background.g, regions[0].0.background.b]);
-
-            for region in regions{
-
-                
-                let char_color: Rgb<u8> = Rgb([region.0.foreground.r, region.0.foreground.g, region.0.foreground.b]);
-                
-
-                for chr in region.1.chars(){
-                    if cur_column_x >= imgx || region.1.chars().count() == 0{
-                        break;
-                    }
-    
-                    // place pixel for character
-                    if chr == ' ' || chr == '\n' {
-                        imgbuf.put_pixel(cur_column_x, cur_y, background);
-                        imgbuf.put_pixel(cur_column_x, cur_y + 1, background);
-                    }else{
-                        imgbuf.put_pixel(cur_column_x, cur_y, char_color);
-                        imgbuf.put_pixel(cur_column_x, cur_y + 1, char_color);
-                    }
-
-                    cur_column_x = cur_column_x + 1;
+            for entry in glob(&search_params).expect("Failed to read glob pattern") {
+                match entry {
+                    Ok(path) => {
+                        paths.push(path);
+                    },
+                    Err(e) => println!("{:?}", e),
                 }
             }
 
-            while cur_column_x < imgx{
-                imgbuf.put_pixel(cur_column_x, cur_y, background);
-                imgbuf.put_pixel(cur_column_x, cur_y + 1, background);
+        // filter out directories
+            let paths: Vec<PathBuf> = paths.into_iter().filter(|e| e.is_file()).collect();
 
-                cur_column_x = cur_column_x + 1;
+        // filter out non unicode files
+            let paths: Vec<PathBuf> = paths.into_iter().filter(|e| {
+                match fs::read_to_string(e){
+                    Ok(_) => true,
+                    Err(_) => false,
+                }
+            }).collect();
+
+    // read files (for /n counting)
+        let mut line_count = 0;
+        for path in &paths{
+            let filename = path;
+            // Open the file in read-only mode (ignoring errors).
+            let file = File::open(filename).unwrap();
+            let reader = BufReader::new(file);
+
+            let line_count_usize = reader.lines().count();
+            line_count += line_count_usize as u32;
+        }
+        // re-make immutable
+        let line_count = line_count;
+
+        println!("line_count: {}",line_count);
+
+    // determine image dimensions based on num of lines and contraints
+
+        // this is a constraint
+        let column_line_limit: u32 = 352;
+
+        // determine required number of columns
+            let mut required_columns = line_count / column_line_limit;
+            if line_count % column_line_limit != 0{
+                required_columns = required_columns + 1;
             }
 
-            cur_column_x = 0;
-            cur_y = cur_y + 2;
+        // remake immutable
+        let required_columns = required_columns;
 
-        } // until NLL this scope is needed so we can clear the buffer after
-        line.clear(); // read_line appends so we need to clear between lines
+    // initialize image
+        // determine x
+            let column_width = 100;
+            let imgx: u32 = required_columns * column_width;
+
+        // determine y
+            let imgy: u32 = if line_count < column_line_limit{
+                line_count * 2
+            }else{
+                column_line_limit * 2
+            };
+        
+        // Create a new ImgBuf with width: imgx and height: imgy
+        let mut imgbuf = RgbImage::new(imgx, imgy);
+    
+    // initialize vars
+        let mut cur_line_x = 0;
+        let mut line = String::new();
+        let mut line_num: u32 = 0;
+        let mut background = Rgb([0,0,0]);
+
+    let tq = tqdm_rs::Tqdm::manual(paths.len());
+    let mut path_num = 1;
+    for path in &paths{
+        println!("{}", path.display());
+        tq.update(path_num);
+        path_num += 1;
+        
+        // initialize highlighting themes
+            let ss = SyntaxSet::load_defaults_newlines();
+            let ts = ThemeSet::load_defaults();
+            let mut highlighter = HighlightFile::new(path, &ss, &ts.themes["Solarized (dark)"]).unwrap();
+
+        while highlighter.reader.read_line(&mut line).unwrap() > 0 {
+            {
+                // get position of current line
+                    let cur_y = (line_num % column_line_limit) * 2;
+                    let cur_column_x_offset = (line_num / column_line_limit) * column_width;
+
+                let regions: Vec<(Style, &str)> = highlighter.highlight_lines.highlight(&line, &ss);
+
+                background = Rgb([regions[0].0.background.r, regions[0].0.background.g, regions[0].0.background.b]);
+
+                for region in regions{
+
+                    let char_color: Rgb<u8> = Rgb([region.0.foreground.r, region.0.foreground.g, region.0.foreground.b]);
+                    
+                    for chr in region.1.chars(){
+                        if cur_line_x >= column_width || region.1.chars().count() == 0{
+                            break;
+                        }
+        
+                        // place pixel for character
+                            if chr == ' ' || chr == '\n' {
+                                imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
+                                imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
+                            }else{
+                                imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, char_color);
+                                imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, char_color);
+                            }
+
+                        cur_line_x = cur_line_x + 1;
+                    }
+                }
+
+                while cur_line_x < column_width{
+                    imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
+                    imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
+
+                    cur_line_x = cur_line_x + 1;
+                }
+
+                cur_line_x = 0;
+                line_num = line_num + 1;
+
+            } // until NLL this scope is needed so we can clear the buffer after
+            line.clear(); // read_line appends so we need to clear between lines
+        }
+    }
+    
+    while line_num < column_line_limit * required_columns {
+        // get position of current line
+        let cur_y = (line_num % column_line_limit) * 2;
+        let cur_column_x_offset = (line_num / column_line_limit) * column_width;
+
+        for cur_line_x in 0..column_width{
+            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
+            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
+        }
+
+        line_num = line_num + 1;
     }
 
-    // Save the image as “fractal.png”, the format is deduced from the path
     imgbuf.save("output.png").unwrap();
-
-
-    // test syntacitc highlighting
-        // use syntect::parsing::SyntaxSet;
-        // use syntect::highlighting::{ThemeSet, Style};
-        // use syntect::util::as_24_bit_terminal_escaped;
-        // use syntect::easy::HighlightFile;
-        // use std::io::BufRead;
-
-        // let ss = SyntaxSet::load_defaults_newlines();
-        // let ts = ThemeSet::load_defaults();
-
-        // // ??
-        //     // println!("{:?}",ts.themes);
-
-        //     // let keys: Vec<String> = ts.themes.into_keys().collect();
-        //     // println!("{:?}",keys);
-
-        //     // for key in ts.themes.IntoKeys(){
-        //     // }
-
-        // let mut highlighter = HighlightFile::new("src/main.rs", &ss, &ts.themes["Solarized (dark)"]).unwrap();
-        // let mut line = String::new();
-        // while highlighter.reader.read_line(&mut line).unwrap() > 0 {
-        //     {
-        //         let regions: Vec<(Style, &str)> = highlighter.highlight_lines.highlight(&line, &ss);
-        //         // println!("{}", as_24_bit_terminal_escaped(&regions[..], true));
-
-
-        //         for region in regions{
-        //             println!("{:?}",region.0.foreground);
-        //         }
-               
-
-        //     } // until NLL this scope is needed so we can clear the buffer after
-        //     line.clear(); // read_line appends so we need to clear between lines
-        // }
 }
