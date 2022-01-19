@@ -11,7 +11,7 @@ use syntect;
 fn main() {
 
     // let filename = "src/main.rs";
-    let filename = "src/main.lua";
+    let filename = "src/main.rs";
 
     // read file (for /n counting)
         let filename = filename;
@@ -20,7 +20,7 @@ fn main() {
         let reader = BufReader::new(file);
 
     // initialize image
-        let imgx = 80;
+        let imgx = 100;
         let imgy = reader.lines().count() as u32 * 2;
         
         // Create a new ImgBuf with width: imgx and height: imgy
