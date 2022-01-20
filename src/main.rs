@@ -62,6 +62,9 @@ fn main() {
         // this is a constraint
             let target_aspect_ratio: f64 = 16.0 / 9.0;
             // let target_aspect_ratio: f64 = 1284.0 / 2778.0; // iphone
+            // let target_aspect_ratio: f64 = f64::MAX;
+            // let target_aspect_ratio: f64 = 0.0;
+            // let target_aspect_ratio: f64 = 0.000000000001;
             let column_width = 100;
 
         let mut last_checked_aspect_ratio: f64 = f64::MAX;
@@ -69,10 +72,23 @@ fn main() {
         let mut required_columns = 1;
         let mut cur_aspect_ratio: f64 = column_width as f64 * line_count as f64 / (column_line_limit as f64 * 2.0);
 
-        if target_aspect_ratio == 0.0{
+        // determine maximum aspect ratios
+            // tallest
+                let tallest_aspect_ratio = column_width as f64 / line_count as f64 * 2.0;
+            // widest
+                let widest_aspect_ratio = line_count as f64 * column_width as f64 / 2.0;
+
+
+        if target_aspect_ratio <= tallest_aspect_ratio {
             column_line_limit = line_count;
             required_columns = 1;
+        }else if target_aspect_ratio >= widest_aspect_ratio {
+            column_line_limit = 1;
+            required_columns = line_count;
         }else{
+            // start at widest possible aspect ratio
+                column_line_limit = 1;
+                required_columns = line_count;
 
             while (last_checked_aspect_ratio - target_aspect_ratio).abs() > (cur_aspect_ratio - target_aspect_ratio).abs(){
 
@@ -92,18 +108,23 @@ fn main() {
             
             }
 
-            // previous while loop would never have been entered if (column_line_limit == 1)
-            // so this would be unnecessary
-            if column_line_limit != 1{
-                // revert to last aspect ratio
-                    column_line_limit -= 1;
-            }
+            // re-determine best aspect ratio
 
-            // determine required number of columns
-                required_columns = line_count / column_line_limit;
-                if line_count % column_line_limit != 0{
-                    required_columns = required_columns + 1;
+                // (Should never not happen, but)
+                // previous while loop would never have been entered if (column_line_limit == 1)
+                // so (column_line_limit -= 1;) would be unnecessary
+                if column_line_limit != 1{
+                    // revert to last aspect ratio
+                        column_line_limit -= 1;
+
+                    // determine required number of columns
+                        required_columns = line_count / column_line_limit;
+                        if line_count % column_line_limit != 0{
+                            required_columns = required_columns + 1;
+                        }
                 }
+
+                
 
             println!("Aspect ratio is {} off from target", (last_checked_aspect_ratio - target_aspect_ratio).abs());
         }
@@ -126,14 +147,17 @@ fn main() {
         // Create a new ImgBuf with width: imgx and height: imgy
         let mut imgbuf = RgbImage::new(imgx, imgy);
     
-    // initialize vars
+    // initialize rendering vars
         let mut cur_line_x = 0;
         let mut line = String::new();
         let mut line_num: u32 = 0;
         let mut background = Rgb([0,0,0]);
 
-    let tq = tqdm_rs::Tqdm::manual(paths.len());
-    let mut path_num = 1;
+    // vars for rendering a progress bar
+        let tq = tqdm_rs::Tqdm::manual(paths.len());
+        let mut path_num = 1;
+
+    // render all lines onto image
     for path in &paths{
         println!("{}", path.display());
         tq.update(path_num);
@@ -191,7 +215,7 @@ fn main() {
         }
     }
 
-    // fill in the bottom right corner
+    // fill in any empty bottom right corner, with background color
         while line_num < column_line_limit * required_columns {
             // get position of current line
                 let cur_y = (line_num % column_line_limit) * 2;
