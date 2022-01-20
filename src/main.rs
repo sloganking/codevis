@@ -59,8 +59,6 @@ fn main() {
 
     // determine image dimensions based on num of lines and contraints
 
-        // column_line_limit = 352;
-
         // this is a constraint
             let target_aspect_ratio: f64 = 16.0/9.0;
             // let target_aspect_ratio: f64 = 1284.0 / 2778.0; // iphone
@@ -93,8 +91,12 @@ fn main() {
         
         }
 
-        // revert to last aspect ratio
-            column_line_limit += 1;
+        // previous while loop would never have been entered if (column_line_limit == 1)
+        // so this would be unnecessary
+        if column_line_limit != 1{
+            // revert to last aspect ratio
+                println!("column_line_limit: {}",column_line_limit);
+                column_line_limit -= 1;
 
             // determine required number of columns
                 required_columns = line_count / column_line_limit;
