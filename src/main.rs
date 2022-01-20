@@ -60,43 +60,44 @@ fn main() {
     // determine image dimensions based on num of lines and contraints
 
         // this is a constraint
-            let target_aspect_ratio: f64 = 16.0/9.0;
+            let target_aspect_ratio: f64 = 16.0 / 9.0;
             // let target_aspect_ratio: f64 = 1284.0 / 2778.0; // iphone
             let column_width = 100;
 
         let mut last_checked_aspect_ratio: f64 = f64::MAX;
-        let mut column_line_limit= 1;
-        let mut required_columns;
+        let mut column_line_limit = 1;
+        let mut required_columns = 1;
         let mut cur_aspect_ratio: f64 = column_width as f64 * line_count as f64 / (column_line_limit as f64 * 2.0);
 
-        while (last_checked_aspect_ratio - target_aspect_ratio).abs() > (cur_aspect_ratio - target_aspect_ratio).abs(){
+        if target_aspect_ratio == 0.0{
+            column_line_limit = line_count;
+            required_columns = 1;
+        }else{
 
-            // remember current aspect ratio
-                last_checked_aspect_ratio = cur_aspect_ratio;
+            while (last_checked_aspect_ratio - target_aspect_ratio).abs() > (cur_aspect_ratio - target_aspect_ratio).abs(){
 
-            // generate new aspect ratio
-                column_line_limit += 1;
+                // remember current aspect ratio
+                    last_checked_aspect_ratio = cur_aspect_ratio;
 
-                // determine required number of columns
-                    required_columns = line_count / column_line_limit;
-                    if line_count % column_line_limit != 0{
-                        required_columns = required_columns + 1;
-                    }
+                // generate new aspect ratio
+                    column_line_limit += 1;
 
-                cur_aspect_ratio = required_columns as f64 * column_width as f64 / (column_line_limit as f64 * 2.0);
+                    // determine required number of columns
+                        required_columns = line_count / column_line_limit;
+                        if line_count % column_line_limit != 0{
+                            required_columns = required_columns + 1;
+                        }
 
-            // println!("cur_aspect_ratio: {}",cur_aspect_ratio);
-            // println!("(last_checked_aspect_ratio - target_aspect_ratio).abs(): {}", (last_checked_aspect_ratio - target_aspect_ratio).abs() );
-            // println!("(cur_aspect_ratio - target_aspect_ratio).abs(): {}", (cur_aspect_ratio - target_aspect_ratio).abs() );
-        
-        }
+                    cur_aspect_ratio = required_columns as f64 * column_width as f64 / (column_line_limit as f64 * 2.0);
+            
+            }
 
-        // previous while loop would never have been entered if (column_line_limit == 1)
-        // so this would be unnecessary
-        if column_line_limit != 1{
-            // revert to last aspect ratio
-                println!("column_line_limit: {}",column_line_limit);
-                column_line_limit -= 1;
+            // previous while loop would never have been entered if (column_line_limit == 1)
+            // so this would be unnecessary
+            if column_line_limit != 1{
+                // revert to last aspect ratio
+                    column_line_limit -= 1;
+            }
 
             // determine required number of columns
                 required_columns = line_count / column_line_limit;
@@ -104,7 +105,8 @@ fn main() {
                     required_columns = required_columns + 1;
                 }
 
-        println!("Aspect ratio is {} off from target", (last_checked_aspect_ratio - target_aspect_ratio).abs());
+            println!("Aspect ratio is {} off from target", (last_checked_aspect_ratio - target_aspect_ratio).abs());
+        }
 
         // remake immutable
             let required_columns = required_columns;
@@ -188,19 +190,21 @@ fn main() {
             line.clear(); // read_line appends so we need to clear between lines
         }
     }
-    
-    while line_num < column_line_limit * required_columns {
-        // get position of current line
-        let cur_y = (line_num % column_line_limit) * 2;
-        let cur_column_x_offset = (line_num / column_line_limit) * column_width;
 
-        for cur_line_x in 0..column_width{
-            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
-            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
+    // fill in the bottom right corner
+        while line_num < column_line_limit * required_columns {
+            // get position of current line
+                let cur_y = (line_num % column_line_limit) * 2;
+                let cur_column_x_offset = (line_num / column_line_limit) * column_width;
+
+            // fill line with background color
+                for cur_line_x in 0..column_width{
+                    imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
+                    imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
+                }
+
+            line_num = line_num + 1;
         }
-
-        line_num = line_num + 1;
-    }
 
     imgbuf.save("output.png").unwrap();
 }
