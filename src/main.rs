@@ -59,7 +59,7 @@ fn main() {
 
     // determine image dimensions based on num of lines and contraints
 
-        // this is a constraint
+        // constraints
             let target_aspect_ratio: f64 = 16.0 / 9.0;
             // let target_aspect_ratio: f64 = 1284.0 / 2778.0; // iphone
             // let target_aspect_ratio: f64 = f64::MAX;
@@ -69,22 +69,21 @@ fn main() {
 
         let mut last_checked_aspect_ratio: f64 = f64::MAX;
         let mut column_line_limit = 1;
-        let mut required_columns = 1;
+        let mut required_columns;
         let mut cur_aspect_ratio: f64 = column_width as f64 * line_count as f64 / (column_line_limit as f64 * 2.0);
 
         // determine maximum aspect ratios
-            // tallest
-                let tallest_aspect_ratio = column_width as f64 / line_count as f64 * 2.0;
-            // widest
-                let widest_aspect_ratio = line_count as f64 * column_width as f64 / 2.0;
-
+            let tallest_aspect_ratio = column_width as f64 / line_count as f64 * 2.0;
+            let widest_aspect_ratio = line_count as f64 * column_width as f64 / 2.0;
 
         if target_aspect_ratio <= tallest_aspect_ratio {
-            column_line_limit = line_count;
-            required_columns = 1;
+            // use tallest possible aspect ratio
+                column_line_limit = line_count;
+                required_columns = 1;
         }else if target_aspect_ratio >= widest_aspect_ratio {
-            column_line_limit = 1;
-            required_columns = line_count;
+            // use widest possible aspect ratio
+                column_line_limit = 1;
+                required_columns = line_count;
         }else{
             // start at widest possible aspect ratio
                 column_line_limit = 1;
