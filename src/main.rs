@@ -66,9 +66,11 @@ fn main() {
             // let target_aspect_ratio: f64 = 0.0;
             // let target_aspect_ratio: f64 = 0.000000000001;
             let column_width = 100;
+            let force_full_columns = true;
 
         let mut last_checked_aspect_ratio: f64 = f64::MAX;
         let mut column_line_limit = 1;
+        let mut last_column_line_limit = column_line_limit;
         let mut required_columns;
         let mut cur_aspect_ratio: f64 = column_width as f64 * line_count as f64 / (column_line_limit as f64 * 2.0);
 
@@ -89,13 +91,15 @@ fn main() {
                 column_line_limit = 1;
                 required_columns = line_count;
 
+            // de-widen aspect ratio until closest match is found
             while (last_checked_aspect_ratio - target_aspect_ratio).abs() > (cur_aspect_ratio - target_aspect_ratio).abs(){
 
                 // remember current aspect ratio
-                    last_checked_aspect_ratio = cur_aspect_ratio;
+                last_checked_aspect_ratio = cur_aspect_ratio;
 
-                // generate new aspect ratio
-                    column_line_limit += 1;
+                if force_full_columns{
+
+                    last_column_line_limit = column_line_limit;
 
                     // determine required number of columns
                         required_columns = line_count / column_line_limit;
@@ -103,27 +107,53 @@ fn main() {
                             required_columns = required_columns + 1;
                         }
 
-                    cur_aspect_ratio = required_columns as f64 * column_width as f64 / (column_line_limit as f64 * 2.0);
-            
+                    let last_required_columns = required_columns;
+
+                    // find next full column aspect ratio
+                    while required_columns == last_required_columns{
+
+                        column_line_limit += 1;
+
+                        // determine required number of columns
+                            required_columns = line_count / column_line_limit;
+                            if line_count % column_line_limit != 0{
+                                required_columns = required_columns + 1;
+                            }
+                    }
+
+                }else{
+
+                    // generate new aspect ratio
+                        column_line_limit += 1;
+
+                        // determine required number of columns
+                            required_columns = line_count / column_line_limit;
+                            if line_count % column_line_limit != 0{
+                                required_columns = required_columns + 1;
+                            }
+                }
+
+                cur_aspect_ratio = required_columns as f64 * column_width as f64 / (column_line_limit as f64 * 2.0);
             }
 
             // re-determine best aspect ratio
 
+
                 // (Should never not happen, but)
                 // previous while loop would never have been entered if (column_line_limit == 1)
                 // so (column_line_limit -= 1;) would be unnecessary
-                if column_line_limit != 1{
+                if column_line_limit != 1 && force_full_columns == false{
                     // revert to last aspect ratio
-                        column_line_limit -= 1;
-
-                    // determine required number of columns
-                        required_columns = line_count / column_line_limit;
-                        if line_count % column_line_limit != 0{
-                            required_columns = required_columns + 1;
-                        }
+                    column_line_limit -= 1;
+                }else if force_full_columns{
+                    column_line_limit = last_column_line_limit;
                 }
 
-                
+                // determine required number of columns
+                    required_columns = line_count / column_line_limit;
+                    if line_count % column_line_limit != 0{
+                        required_columns = required_columns + 1;
+                    }
 
             println!("Aspect ratio is {} off from target", (last_checked_aspect_ratio - target_aspect_ratio).abs());
         }
