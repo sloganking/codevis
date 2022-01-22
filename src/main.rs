@@ -1,49 +1,22 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use image::{RgbImage, Rgb};
+use image::{RgbImage, Rgb, ImageBuffer};
 
 use syntect::parsing::SyntaxSet;
 use syntect::highlighting::{ThemeSet, Style};
 use syntect::easy::HighlightFile;
 
 use syntect;
-use std::fs;
+use std::{fs};
 
-fn main() {
+fn render(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, force_full_columns: bool) -> ImageBuffer<Rgb<u8>, Vec<u8>>{
 
-    // get list of valid files
-        // get list of files in ./input/ using glob
-            use glob::glob;
-
-            let mut paths = Vec::new();
-
-            let file_delimiter = "";
-            let search_params = String::from("./input/**/*") + file_delimiter;
-
-            for entry in glob(&search_params).expect("Failed to read glob pattern") {
-                match entry {
-                    Ok(path) => {
-                        paths.push(path);
-                    },
-                    Err(e) => println!("{:?}", e),
-                }
-            }
-
-        // filter out directories
-            let paths: Vec<PathBuf> = paths.into_iter().filter(|e| e.is_file()).collect();
-
-        // filter out non unicode files
-            let paths: Vec<PathBuf> = paths.into_iter().filter(|e| {
-                match fs::read_to_string(e){
-                    Ok(_) => true,
-                    Err(_) => false,
-                }
-            }).collect();
+    let line_offset = 0;
 
     // read files (for /n counting)
         let mut line_count = 0;
-        for path in &paths{
+        for path in paths{
             let filename = path;
             // Open the file in read-only mode (ignoring errors).
             let file = File::open(filename).unwrap();
@@ -60,13 +33,13 @@ fn main() {
     // determine image dimensions based on num of lines and contraints
 
         // constraints
-            let target_aspect_ratio: f64 = 16.0 / 9.0;
+            // let target_aspect_ratio: f64 = 16.0 / 9.0;
             // let target_aspect_ratio: f64 = 1284.0 / 2778.0; // iphone
             // let target_aspect_ratio: f64 = f64::MAX;
             // let target_aspect_ratio: f64 = 0.0;
             // let target_aspect_ratio: f64 = 0.000000000001;
-            let column_width = 100;
-            let force_full_columns = true;
+            // let column_width = 100;
+            // let force_full_columns = true;
 
         let mut last_checked_aspect_ratio: f64 = f64::MAX;
         let mut column_line_limit = 1;
@@ -175,7 +148,7 @@ fn main() {
         
         // Create a new ImgBuf with width: imgx and height: imgy
         let mut imgbuf = RgbImage::new(imgx, imgy);
-    
+
     // initialize rendering vars
         let mut cur_line_x = 0;
         let mut line = String::new();
@@ -187,7 +160,7 @@ fn main() {
         let mut path_num = 1;
 
     // render all lines onto image
-    for path in &paths{
+    for path in paths{
         println!("{}", path.display());
         tq.update(path_num);
         path_num += 1;
@@ -200,8 +173,11 @@ fn main() {
         while highlighter.reader.read_line(&mut line).unwrap() > 0 {
             {
                 // get position of current line
-                    let cur_y = (line_num % column_line_limit) * 2;
-                    let cur_column_x_offset = (line_num / column_line_limit) * column_width;
+                    // y
+                        let actual_line = (line_num + line_offset) % line_count;
+                        let cur_y = (actual_line % column_line_limit) * 2;
+                    // x
+                        let cur_column_x_offset = (actual_line / column_line_limit) * column_width;
 
                 let regions: Vec<(Style, &str)> = highlighter.highlight_lines.highlight(&line, &ss);
 
@@ -247,8 +223,11 @@ fn main() {
     // fill in any empty bottom right corner, with background color
         while line_num < column_line_limit * required_columns {
             // get position of current line
-                let cur_y = (line_num % column_line_limit) * 2;
-                let cur_column_x_offset = (line_num / column_line_limit) * column_width;
+                // y
+                    // let actual_line = (line_num + line_offset) % line_count;
+                    let cur_y = (line_num % column_line_limit) * 2;
+                // x
+                    let cur_column_x_offset = (line_num / column_line_limit) * column_width;
 
             // fill line with background color
                 for cur_line_x in 0..column_width{
@@ -259,5 +238,73 @@ fn main() {
             line_num = line_num + 1;
         }
 
-    imgbuf.save("output.png").unwrap();
+    imgbuf
+}
+
+// fn render_to_file(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, force_full_columns: bool, filename: &str){
+//     render(&paths, column_width, target_aspect_ratio, force_full_columns).save(filename).unwrap();
+// }
+
+// fn roll_image(imgbuf: ImageBuffer<Rgb<u8>, Vec<u8>>, column_width: u32) -> ImageBuffer<Rgb<u8>, Vec<u8>>{
+
+
+    
+
+//     let column_line_limit = imgbuf.height() / 2;
+
+//     let total_lines = column_line_limit * column_width;
+
+//     let column_width = column_line_limit / imgbuf.width();
+
+//     let temp_line = [0;column_width];
+
+//     for x in 0..total_lines{
+
+//     }
+
+//     imgbuf
+// }
+
+fn main() {
+
+    // get list of valid files
+        // get list of files in ./input/ using glob
+            use glob::glob;
+
+            let mut paths = Vec::new();
+
+            let file_delimiter = "";
+            let search_params = String::from("./input/**/*") + file_delimiter;
+
+            for entry in glob(&search_params).expect("Failed to read glob pattern") {
+                match entry {
+                    Ok(path) => {
+                        paths.push(path);
+                    },
+                    Err(e) => println!("{:?}", e),
+                }
+            }
+
+        // filter out directories
+            let paths: Vec<PathBuf> = paths.into_iter().filter(|e| e.is_file()).collect();
+
+        // filter out non unicode files
+            let paths: Vec<PathBuf> = paths.into_iter().filter(|e| {
+                match fs::read_to_string(e){
+                    Ok(_) => true,
+                    Err(_) => false,
+                }
+            }).collect();
+
+
+    render(&paths, 100, 16.0 / 9.0, true).save("./output.png").unwrap();
+
+
+    // for x in 0..4221{
+    //     let file_num = format!("{}",x);
+    //     let file_num = format!("{:0>8}",file_num);
+    //     let file_num = format!("./images/{}",file_num);
+    //     render_to_file(&paths, 100, 16.0 / 10.0, true, &(file_num + ".png"), x);
+    // }
+    
 }
