@@ -1,3 +1,14 @@
+#[cfg(test)]
+mod tests {
+    use crate::renderer;
+
+    #[test]
+    fn renders_self(){
+        let paths = renderer::get_unicode_files_in_dir("./src/");
+        renderer::render(&paths, 100, 16.0 / 9.0, true, true);
+    }
+}
+
 pub mod renderer{
 
     use std::fs::File;
