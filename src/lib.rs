@@ -10,7 +10,7 @@ pub mod renderer{
     use syntect::easy::HighlightFile;
     use glob::glob;
 
-    pub fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool) -> ImageBuffer<Rgb<u8>, Vec<u8>>{
+    pub fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool, print_progress: bool) -> ImageBuffer<Rgb<u8>, Vec<u8>>{
 
         // unused for now
         // could be used to make a "rolling code" animation
@@ -29,8 +29,6 @@ pub mod renderer{
             }
             // re-make immutable
             let line_count = line_count;
-    
-            println!("line_count: {}",line_count);
     
         // determine image dimensions based on num of lines and contraints
 
@@ -121,8 +119,6 @@ pub mod renderer{
                         if line_count % column_line_limit != 0{
                             required_columns += 1;
                         }
-    
-                println!("Aspect ratio is {} off from target", (last_checked_aspect_ratio - target_aspect_ratio).abs());
             }
     
             // remake immutable
@@ -155,9 +151,11 @@ pub mod renderer{
     
         // render all lines onto image
         for path in paths{
-            println!("{}", path.display());
-            tq.update(path_num);
-            path_num += 1;
+            if print_progress {
+                println!("{}", path.display());
+                tq.update(path_num);
+                path_num += 1;
+            }
             
             // initialize highlighting themes
                 let ss = SyntaxSet::load_defaults_newlines();
@@ -230,6 +228,14 @@ pub mod renderer{
                     }
                 line_num += 1;
             }
+
+        if print_progress {
+            println!("===== Finished Render Stats =====");
+            println!("line_count: {}",line_count);
+            println!("Aspect ratio is {} off from target", (last_checked_aspect_ratio - target_aspect_ratio).abs());
+            println!("=================================");
+        }
+
         imgbuf
     }
 
