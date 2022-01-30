@@ -241,30 +241,6 @@ fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_
     imgbuf
 }
 
-// fn render_to_file(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, force_full_columns: bool, filename: &str){
-//     render(&paths, column_width, target_aspect_ratio, force_full_columns).save(filename).unwrap();
-// }
-
-// fn roll_image(imgbuf: ImageBuffer<Rgb<u8>, Vec<u8>>, column_width: u32) -> ImageBuffer<Rgb<u8>, Vec<u8>>{
-
-
-    
-
-//     let column_line_limit = imgbuf.height() / 2;
-
-//     let total_lines = column_line_limit * column_width;
-
-//     let column_width = column_line_limit / imgbuf.width();
-
-//     let temp_line = [0;column_width];
-
-//     for x in 0..total_lines{
-
-//     }
-
-//     imgbuf
-// }
-
 fn main() {
 
     // get list of valid files
@@ -293,13 +269,5 @@ fn main() {
 
 
     render(&paths, 100, 16.0 / 9.0, true).save("./output.png").unwrap();
-
-
-    // for x in 0..4221{
-    //     let file_num = format!("{}",x);
-    //     let file_num = format!("{:0>8}",file_num);
-    //     let file_num = format!("./images/{}",file_num);
-    //     render_to_file(&paths, 100, 16.0 / 10.0, true, &(file_num + ".png"), x);
-    // }
     
 }
