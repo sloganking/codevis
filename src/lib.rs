@@ -10,6 +10,8 @@ pub mod renderer{
 
     pub fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool) -> ImageBuffer<Rgb<u8>, Vec<u8>>{
 
+        // unused for now
+        // could be used to make a "rolling code" animation
         let line_offset = 0;
     
         // read files (for /n counting)
