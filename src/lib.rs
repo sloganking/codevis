@@ -5,7 +5,10 @@ mod tests {
     #[test]
     fn renders_self(){
         let paths = renderer::get_unicode_files_in_dir("./src/");
-        renderer::render(&paths, 100, 16.0 / 9.0, true, true);
+        let img = renderer::render(&paths, 100, 16.0 / 9.0, true, true);
+        if img == None{
+            panic!();
+        }
     }
 }
 
@@ -21,8 +24,8 @@ pub mod renderer{
     use syntect::easy::HighlightFile;
     use glob::glob;
 
-    pub fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool, print_progress: bool) -> ImageBuffer<Rgb<u8>, Vec<u8>>{
-
+    pub fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool, print_progress: bool) -> Option<ImageBuffer<Rgb<u8>, Vec<u8>>>{
+        
         // unused for now
         // could be used to make a "rolling code" animation
         let line_offset = 0;
@@ -40,6 +43,10 @@ pub mod renderer{
             }
             // re-make immutable
             let line_count = line_count;
+
+        if line_count == 0{
+            return None
+        }
     
         // determine image dimensions based on num of lines and contraints
 
@@ -247,7 +254,7 @@ pub mod renderer{
             println!("=================================");
         }
 
-        imgbuf
+        Some(imgbuf)
     }
 
     pub fn get_unicode_files_in_dir(path: &str) -> Vec<PathBuf> {
