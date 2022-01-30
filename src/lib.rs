@@ -4,11 +4,9 @@ pub mod renderer{
     use std::io::{BufRead, BufReader};
     use std::path::PathBuf;
     use image::{RgbImage, Rgb, ImageBuffer};
-
     use syntect::parsing::SyntaxSet;
     use syntect::highlighting::{ThemeSet, Style};
     use syntect::easy::HighlightFile;
-
 
     pub fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool) -> ImageBuffer<Rgb<u8>, Vec<u8>>{
 
@@ -31,21 +29,13 @@ pub mod renderer{
             println!("line_count: {}",line_count);
     
         // determine image dimensions based on num of lines and contraints
-    
-            // constraints
-                // let target_aspect_ratio: f64 = 16.0 / 9.0;
-                // let target_aspect_ratio: f64 = 1284.0 / 2778.0; // iphone
-                // let target_aspect_ratio: f64 = f64::MAX;
-                // let target_aspect_ratio: f64 = 0.0;
-                // let target_aspect_ratio: f64 = 0.000000000001;
-                // let column_width = 100;
-                // let force_full_columns = true;
-    
-            let mut last_checked_aspect_ratio: f64 = f64::MAX;
-            let mut column_line_limit = 1;
-            let mut last_column_line_limit = column_line_limit;
-            let mut required_columns;
-            let mut cur_aspect_ratio: f64 = column_width as f64 * line_count as f64 / (column_line_limit as f64 * 2.0);
+
+            // initialize variables
+                let mut last_checked_aspect_ratio: f64 = f64::MAX;
+                let mut column_line_limit = 1;
+                let mut last_column_line_limit = column_line_limit;
+                let mut required_columns;
+                let mut cur_aspect_ratio: f64 = column_width as f64 * line_count as f64 / (column_line_limit as f64 * 2.0);
     
             // determine maximum aspect ratios
                 let tallest_aspect_ratio = column_width as f64 / line_count as f64 * 2.0;
@@ -234,11 +224,8 @@ pub mod renderer{
                         imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
                         imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
                     }
-    
                 line_num += 1;
             }
-    
         imgbuf
     }
-
 }

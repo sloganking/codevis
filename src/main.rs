@@ -5,8 +5,8 @@ use code_visualizer::renderer;
 
 fn main() {
 
-    // get list of valid files
-        // get list of files in ./input/ using glob
+    // get list of valid files in ./input
+        // get list of all files in ./input/ using glob
             let mut paths = Vec::new();
 
             let file_delimiter = "";
@@ -30,5 +30,4 @@ fn main() {
             }).collect();
 
     renderer::render(&paths, 100, 16.0 / 9.0, true).save("./output.png").unwrap();
-    
 }
