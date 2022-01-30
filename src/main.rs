@@ -7,10 +7,10 @@ use syntect::parsing::SyntaxSet;
 use syntect::highlighting::{ThemeSet, Style};
 use syntect::easy::HighlightFile;
 
-use syntect;
 use std::{fs};
+use glob::glob;
 
-fn render(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, force_full_columns: bool) -> ImageBuffer<Rgb<u8>, Vec<u8>>{
+fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool) -> ImageBuffer<Rgb<u8>, Vec<u8>>{
 
     let line_offset = 0;
 
@@ -77,7 +77,7 @@ fn render(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, for
                     // determine required number of columns
                         required_columns = line_count / column_line_limit;
                         if line_count % column_line_limit != 0{
-                            required_columns = required_columns + 1;
+                            required_columns += 1;
                         }
 
                     let last_required_columns = required_columns;
@@ -90,7 +90,7 @@ fn render(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, for
                         // determine required number of columns
                             required_columns = line_count / column_line_limit;
                             if line_count % column_line_limit != 0{
-                                required_columns = required_columns + 1;
+                                required_columns += 1;
                             }
                     }
 
@@ -102,7 +102,7 @@ fn render(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, for
                         // determine required number of columns
                             required_columns = line_count / column_line_limit;
                             if line_count % column_line_limit != 0{
-                                required_columns = required_columns + 1;
+                                required_columns += 1;
                             }
                 }
 
@@ -115,7 +115,7 @@ fn render(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, for
                 // (Should never not happen, but)
                 // previous while loop would never have been entered if (column_line_limit == 1)
                 // so (column_line_limit -= 1;) would be unnecessary
-                if column_line_limit != 1 && force_full_columns == false{
+                if column_line_limit != 1 && !force_full_columns{
                     // revert to last aspect ratio
                     column_line_limit -= 1;
                 }else if force_full_columns{
@@ -125,7 +125,7 @@ fn render(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, for
                 // determine required number of columns
                     required_columns = line_count / column_line_limit;
                     if line_count % column_line_limit != 0{
-                        required_columns = required_columns + 1;
+                        required_columns += 1;
                     }
 
             println!("Aspect ratio is {} off from target", (last_checked_aspect_ratio - target_aspect_ratio).abs());
@@ -201,7 +201,7 @@ fn render(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, for
                                 imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, char_color);
                             }
 
-                        cur_line_x = cur_line_x + 1;
+                        cur_line_x += 1;
                     }
                 }
 
@@ -209,11 +209,11 @@ fn render(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, for
                     imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
                     imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
 
-                    cur_line_x = cur_line_x + 1;
+                    cur_line_x += 1;
                 }
 
                 cur_line_x = 0;
-                line_num = line_num + 1;
+                line_num += 1;
 
             } // until NLL this scope is needed so we can clear the buffer after
             line.clear(); // read_line appends so we need to clear between lines
@@ -235,7 +235,7 @@ fn render(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, for
                     imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
                 }
 
-            line_num = line_num + 1;
+            line_num += 1;
         }
 
     imgbuf
@@ -269,8 +269,6 @@ fn main() {
 
     // get list of valid files
         // get list of files in ./input/ using glob
-            use glob::glob;
-
             let mut paths = Vec::new();
 
             let file_delimiter = "";
@@ -286,14 +284,11 @@ fn main() {
             }
 
         // filter out directories
-            let paths: Vec<PathBuf> = paths.into_iter().filter(|e| e.is_file()).collect();
+            let paths = paths.into_iter().filter(|e| e.is_file());
 
         // filter out non unicode files
             let paths: Vec<PathBuf> = paths.into_iter().filter(|e| {
-                match fs::read_to_string(e){
-                    Ok(_) => true,
-                    Err(_) => false,
-                }
+                fs::read_to_string(e).is_ok()
             }).collect();
 
 
