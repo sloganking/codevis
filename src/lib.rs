@@ -1,12 +1,14 @@
 pub mod renderer{
 
     use std::fs::File;
+    use std::fs;
     use std::io::{BufRead, BufReader};
     use std::path::PathBuf;
     use image::{RgbImage, Rgb, ImageBuffer};
     use syntect::parsing::SyntaxSet;
     use syntect::highlighting::{ThemeSet, Style};
     use syntect::easy::HighlightFile;
+    use glob::glob;
 
     pub fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool) -> ImageBuffer<Rgb<u8>, Vec<u8>>{
 
@@ -229,5 +231,33 @@ pub mod renderer{
                 line_num += 1;
             }
         imgbuf
+    }
+
+    pub fn get_unicode_files_in_dir(path: &str) -> Vec<PathBuf> {
+
+        // get list of all files in ./input/ using glob
+            let mut paths = Vec::new();
+
+            let file_delimiter = "";
+            let search_params = String::from(path) + "**/*" + file_delimiter;
+
+            for entry in glob(&search_params).expect("Failed to read glob pattern") {
+                match entry {
+                    Ok(path) => {
+                        paths.push(path);
+                    },
+                    Err(e) => println!("{:?}", e),
+                }
+            }
+
+        // filter out directories
+            let paths = paths.into_iter().filter(|e| e.is_file());
+
+        // filter out non unicode files
+            let paths: Vec<PathBuf> = paths.into_iter().filter(|e| {
+                fs::read_to_string(e).is_ok()
+            }).collect();
+
+        paths
     }
 }

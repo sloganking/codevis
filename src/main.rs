@@ -1,33 +1,10 @@
-use std::path::PathBuf;
-use std::{fs};
-use glob::glob;
 use code_visualizer::renderer;
 
 fn main() {
 
-    // get list of valid files in ./input
-        // get list of all files in ./input/ using glob
-            let mut paths = Vec::new();
+    // get list of valid files in ./input/
+    let paths = renderer::get_unicode_files_in_dir("./input/");
 
-            let file_delimiter = "";
-            let search_params = String::from("./input/**/*") + file_delimiter;
-
-            for entry in glob(&search_params).expect("Failed to read glob pattern") {
-                match entry {
-                    Ok(path) => {
-                        paths.push(path);
-                    },
-                    Err(e) => println!("{:?}", e),
-                }
-            }
-
-        // filter out directories
-            let paths = paths.into_iter().filter(|e| e.is_file());
-
-        // filter out non unicode files
-            let paths: Vec<PathBuf> = paths.into_iter().filter(|e| {
-                fs::read_to_string(e).is_ok()
-            }).collect();
-
+    // render files to image, and store in ./output.png
     renderer::render(&paths, 100, 16.0 / 9.0, true).save("./output.png").unwrap();
 }
