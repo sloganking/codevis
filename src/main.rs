@@ -62,7 +62,7 @@ fn render(paths: &Vec<PathBuf>, column_width: u32, target_aspect_ratio: f64, for
         }else{
             // start at widest possible aspect ratio
                 column_line_limit = 1;
-                required_columns = line_count;
+                // required_columns = line_count;
 
             // de-widen aspect ratio until closest match is found
             while (last_checked_aspect_ratio - target_aspect_ratio).abs() > (cur_aspect_ratio - target_aspect_ratio).abs(){
