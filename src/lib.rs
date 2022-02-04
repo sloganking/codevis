@@ -5,7 +5,7 @@ mod tests {
     #[test]
     fn renders_self(){
         let paths = renderer::get_unicode_files_in_dir("./src/");
-        let img = renderer::render(&paths, 100, 16.0 / 9.0, true, true);
+        let img = renderer::render(&paths, 100, 16.0 / 9.0, true, true, None);
         if img == None{
             panic!();
         }
@@ -24,25 +24,45 @@ pub mod renderer{
     use syntect::easy::HighlightFile;
     use glob::glob;
 
-    pub fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool, print_progress: bool) -> Option<ImageBuffer<Rgb<u8>, Vec<u8>>>{
+    pub fn count_lines_in_files(paths: &[PathBuf]) -> u32{
+
+        let mut line_count = 0;
+        for path in paths{
+            let filename = path;
+            // Open the file in read-only mode (ignoring errors).
+            let file = File::open(filename).unwrap();
+            let reader = BufReader::new(file);
+
+            let line_count_usize = reader.lines().count();
+            line_count += line_count_usize as u32;
+        }
+
+        line_count
+    }
+
+    pub fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool, print_progress: bool, line_limit: Option<u32>) -> Option<ImageBuffer<Rgb<u8>, Vec<u8>>>{
         
+
+        // calculate has_line_limit
+            let mut has_line_limit = false;
+            let mut line_limit_num = 0;
+
+            if let Some(x) = line_limit{
+                has_line_limit = true;
+                // -1 since line_num starts at 0
+                line_limit_num = x-1;
+            }
+
+            // re-make immutable
+                let has_line_limit = has_line_limit;
+                let line_limit_num = line_limit_num;
+
         // unused for now
         // could be used to make a "rolling code" animation
         let line_offset = 0;
     
         // read files (for /n counting)
-            let mut line_count = 0;
-            for path in paths{
-                let filename = path;
-                // Open the file in read-only mode (ignoring errors).
-                let file = File::open(filename).unwrap();
-                let reader = BufReader::new(file);
-    
-                let line_count_usize = reader.lines().count();
-                line_count += line_count_usize as u32;
-            }
-            // re-make immutable
-            let line_count = line_count;
+            let line_count = count_lines_in_files(paths);
 
         if line_count == 0{
             return None
@@ -182,6 +202,11 @@ pub mod renderer{
     
             while highlighter.reader.read_line(&mut line).unwrap() > 0 {
                 {
+
+                    if has_line_limit && line_num > line_limit_num{
+                        break;
+                    }
+
                     // get position of current line
                         // y
                             let actual_line = (line_num + line_offset) % line_count;
@@ -262,7 +287,7 @@ pub mod renderer{
         // get list of all files in ./input/ using glob
             let mut paths = Vec::new();
 
-            let file_delimiter = "";
+            let file_delimiter = "lua";
             let search_params = String::from(path) + "**/*" + file_delimiter;
 
             for entry in glob(&search_params).expect("Failed to read glob pattern") {
