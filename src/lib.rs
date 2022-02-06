@@ -40,7 +40,7 @@ pub mod renderer{
         line_count
     }
 
-    pub fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool, print_progress: bool, line_limit: Option<u32>) -> Option<ImageBuffer<Rgb<u8>, Vec<u8>>>{
+    pub fn render(paths: &[PathBuf], column_width: u32, target_aspect_ratio: f64, force_full_columns: bool, print_progress: bool, line_limit: Option<u32>, save_img_every_char: bool) -> Option<ImageBuffer<Rgb<u8>, Vec<u8>>>{
         
 
         // calculate has_line_limit
@@ -176,8 +176,33 @@ pub mod renderer{
             
             // Create a new ImgBuf with width: imgx and height: imgy
             let mut imgbuf = RgbImage::new(imgx, imgy);
+
+    if save_img_every_char {
+        // get background color
+
+            // initialize highlighting 
+                let mut line = String::new();
+                let ss = SyntaxSet::load_defaults_newlines();
+                let ts = ThemeSet::load_defaults();
+                let mut highlighter = HighlightFile::new(&paths[0], &ss, &ts.themes["Solarized (dark)"]).unwrap();
+
+                highlighter.reader.read_line(&mut line).unwrap();
+
+            // get color
+                let regions: Vec<(Style, &str)> = highlighter.highlight_lines.highlight(&line, &ss);
+                let background = Rgb([regions[0].0.background.r, regions[0].0.background.g, regions[0].0.background.b]);
+
+        // flood img with background color
+            for x in 0..imgx {
+                for y in 0..imgy{
+                    imgbuf.put_pixel(x, y, background);
+                }
+            }
+    }
+            
     
         // initialize rendering vars
+            let mut cur_char = 0;
             let mut cur_line_x = 0;
             let mut line = String::new();
             let mut line_num: u32 = 0;
@@ -234,6 +259,18 @@ pub mod renderer{
                                 }else{
                                     imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, char_color);
                                     imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, char_color);
+
+                                    if save_img_every_char{
+                                    // determine file name
+                                        let file_name = format!("{}",cur_char);
+                                        let file_name = format!("{:0>8}",file_name);
+                                        let file_name = format!("./images/{}",file_name);
+
+
+                                        imgbuf.save(&(file_name + ".png")).unwrap();
+
+                                        cur_char += 1;
+                                    }
                                 }
     
                             cur_line_x += 1;
