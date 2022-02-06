@@ -11,11 +11,9 @@ fn main() {
 
     let width = img.width();
     let height = img.height();
-
     let img_vec = img.to_vec();
-    // img.clone_from_slice(&vec);
 
-    // qoi
+    // qoi compression
         use qoi::{encode_to_vec, decode_to_vec};
 
         let encoded = encode_to_vec(&img_vec, width, height).unwrap();
@@ -31,7 +29,6 @@ fn main() {
         println!("src img size: {}", img_vec.len());
         println!("compresed img size: {}", encoded.len());
         println!("compressed image percentage: {}", encoded.len() as f64 / img_vec.len() as f64);
-
 
     // write qoi file
         fs::write("output.qoi", encoded).unwrap();
