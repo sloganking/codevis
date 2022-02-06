@@ -14,7 +14,7 @@ mod tests {
 
 pub mod renderer{
 
-    use std::fs::File;
+    use std::fs::{File, OpenOptions};
     use std::fs;
     use std::io::{BufRead, BufReader};
     use std::path::PathBuf;
@@ -23,6 +23,7 @@ pub mod renderer{
     use syntect::highlighting::{ThemeSet, Style};
     use syntect::easy::HighlightFile;
     use glob::glob;
+    use qoi::{encode_to_vec, decode_to_vec};
 
     pub fn count_lines_in_files(paths: &[PathBuf]) -> u32{
 
@@ -209,16 +210,12 @@ pub mod renderer{
             let mut background = Rgb([0,0,0]);
     
         // vars for rendering a progress bar
-            let tq = tqdm_rs::Tqdm::manual(paths.len());
-            let mut path_num = 1;
+            let tq = tqdm_rs::Tqdm::manual(line_count as usize);
+            let mut iteration_count = 1;
     
         // render all lines onto image
         for path in paths{
-            if print_progress {
-                println!("{}", path.display());
-                tq.update(path_num);
-                path_num += 1;
-            }
+            
             
             // initialize highlighting themes
                 let ss = SyntaxSet::load_defaults_newlines();
@@ -227,6 +224,12 @@ pub mod renderer{
     
             while highlighter.reader.read_line(&mut line).unwrap() > 0 {
                 {
+
+                    if print_progress {
+                        println!("{}", path.display());
+                        tq.update(iteration_count);
+                        iteration_count += 1;
+                    }
 
                     if has_line_limit && line_num > line_limit_num{
                         break;
@@ -266,8 +269,16 @@ pub mod renderer{
                                         let file_name = format!("{:0>8}",file_name);
                                         let file_name = format!("./images/{}",file_name);
 
-
                                         imgbuf.save(&(file_name + ".png")).unwrap();
+
+                                    // save qoi file
+                                        // // compress
+                                        //     let img_vec = imgbuf.to_vec();
+                                        //     let encoded = encode_to_vec(&img_vec, imgx, imgy).unwrap();
+                                        // // write to file
+                                        //     // use std::fs;
+                                        //     // use std::path::Path;
+                                        //     fs::write(file_name + ".qoi", encoded).unwrap();
 
                                         cur_char += 1;
                                     }
