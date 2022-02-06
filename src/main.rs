@@ -1,6 +1,5 @@
-use std::fs::OpenOptions;
-
 use code_visualizer::renderer;
+use std::fs;
 
 fn main() {
     let paths = renderer::get_unicode_files_in_dir("./input/");
@@ -35,9 +34,5 @@ fn main() {
 
 
     // write qoi file
-        use std::io::Write;
-        let mut file = OpenOptions::new()
-            .write(true)
-            .open("./output.qoi").unwrap();
-        file.write_all(&encoded).unwrap();
+        fs::write("output.qoi", encoded).unwrap();
 }
