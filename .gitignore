@@ -13,5 +13,8 @@ Cargo.lock
 input/
 
 output.png
+output.qoi
 
 .vscode/
+
+images/
