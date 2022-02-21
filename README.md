@@ -7,10 +7,15 @@ This repo's render of [sloganking/My-Own-OS](https://github.com/sloganking/My-Ow
 ![](./assets/code.png)
 
 
+## Usage
+
+- Install [the Rust programming language.](https://www.rust-lang.org/)
+- Put all files you want to visualize in the ``./input/`` folder (they can be in deeper folders).
+- Open a terminal in this repo's directory, and run ``cargo run --release``
+- See the finished render in ``./output.png``
 
 
 ### To document
 
-- How to use
 - How to set the target aspect ratio
 - How to change themes
