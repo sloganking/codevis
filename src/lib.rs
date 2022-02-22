@@ -203,7 +203,7 @@ pub mod renderer{
                             }
             
                             // place pixel for character
-                                if chr == ' ' || chr == '\n' {
+                                if chr == ' ' || chr == '\n' || chr == '\r' {
                                     imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
                                     imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
                                 }else{
