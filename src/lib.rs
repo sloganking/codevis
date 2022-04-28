@@ -243,6 +243,35 @@ pub mod renderer {
                                         cur_y + 1,
                                         background,
                                     );
+
+                                    cur_line_x += 1;
+
+                                } else if chr == '\t'{
+
+                                    // specifies how many spaces a tab should be rendered as
+                                    let tab_spaces = 4;
+
+                                    let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
+
+                                    for x in cur_line_x..cur_line_x+spaces_to_add{
+
+                                        if x >= column_width {
+                                            break;
+                                        }
+
+                                        imgbuf.put_pixel(
+                                            cur_column_x_offset + cur_line_x,
+                                            cur_y,
+                                            background,
+                                        );
+                                        imgbuf.put_pixel(
+                                            cur_column_x_offset + cur_line_x,
+                                            cur_y + 1,
+                                            background,
+                                        );
+
+                                        cur_line_x += 1;
+                                    }
                                 } else {
                                     imgbuf.put_pixel(
                                         cur_column_x_offset + cur_line_x,
@@ -254,10 +283,10 @@ pub mod renderer {
                                         cur_y + 1,
                                         char_color,
                                     );
+
+                                    cur_line_x += 1;
                                 }
                             //<
-
-                            cur_line_x += 1;
                         }
                     }
 
