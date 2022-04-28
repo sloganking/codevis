@@ -245,16 +245,13 @@ pub mod renderer {
                                     );
 
                                     cur_line_x += 1;
-
-                                } else if chr == '\t'{
-
+                                } else if chr == '\t' {
                                     // specifies how many spaces a tab should be rendered as
                                     let tab_spaces = 4;
 
                                     let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
 
-                                    for x in cur_line_x..cur_line_x+spaces_to_add{
-
+                                    for x in cur_line_x..cur_line_x + spaces_to_add {
                                         if x >= column_width {
                                             break;
                                         }
