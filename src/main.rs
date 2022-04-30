@@ -7,5 +7,5 @@ fn main() {
     renderer::render(&paths, 100, 16.0 / 9.0, true, true)
         .expect("No UTF-8 compatible files found.")
         .save("./output.png")
-        .unwrap();
+        .expect("Failed to save PNG file");
 }
