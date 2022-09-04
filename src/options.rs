@@ -2,6 +2,10 @@ use std::path::PathBuf;
 
 #[derive(Debug, clap::Parser)]
 pub struct Args {
+    /// If true, files that would be rendered white due to lack of syntax are skipped.
+    #[clap(long, help_heading = "INPUT")]
+    pub ignore_files_without_syntax: bool,
+
     /// Assure columns are never empty and continuously filled.
     #[clap(long, default_value_t = true, help_heading = "IMAGE")]
     pub force_full_columns: bool,

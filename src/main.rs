@@ -33,6 +33,7 @@ fn main() -> anyhow::Result<()> {
     let res = code_visualizer::render(
         &paths,
         args.column_width_pixels,
+        args.ignore_files_without_syntax,
         args.line_height_pixels,
         args.aspect_width / args.aspect_height,
         args.force_full_columns,

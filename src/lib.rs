@@ -3,6 +3,7 @@ use bstr::ByteSlice;
 use glob::glob;
 use image::{ImageBuffer, Rgb, RgbImage};
 use prodash::Progress;
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use syntect::highlighting::{Style, ThemeSet};
@@ -11,6 +12,7 @@ use syntect::parsing::SyntaxSet;
 pub fn render(
     content: &[(PathBuf, String)],
     column_width: u32,
+    ignore_files_without_syntax: bool,
     line_height: u32,
     target_aspect_ratio: f64,
     force_full_columns: bool,
@@ -22,13 +24,21 @@ pub fn render(
     let line_offset = 0;
     let start = std::time::Instant::now();
 
+    let ss = SyntaxSet::load_defaults_newlines();
+
     //> read files (for /n counting)
-    let total_line_count = {
+    let (total_line_count, ignored) = {
         let mut lines = 0;
-        for (_path, content) in content {
-            lines += content.lines().count()
+        let mut ignored = BTreeSet::default();
+        for (path, content) in content {
+            let content_lines = content.lines().count();
+            lines += content_lines;
+            if ignore_files_without_syntax && ss.find_syntax_for_file(path)?.is_none() {
+                lines -= content_lines;
+                ignored.insert(path);
+            }
         }
-        lines as u32
+        (lines as u32, ignored)
     };
 
     if total_line_count == 0 {
@@ -160,7 +170,10 @@ pub fn render(
 
     // render all lines onto image
     progress.set_name("overall");
-    progress.init(Some(content.len()), prodash::unit::label("files").into());
+    progress.init(
+        Some(content.len() - ignored.len()),
+        prodash::unit::label("files").into(),
+    );
     let mut line_progress = progress.add_child("render");
     line_progress.init(
         Some(total_line_count as usize),
@@ -168,10 +181,12 @@ pub fn render(
     );
 
     //> initialize highlighting themes
-    let ss = SyntaxSet::load_defaults_newlines();
     let ts = ThemeSet::load_defaults();
 
     for (path, content) in content {
+        if ignored.contains(path) {
+            continue;
+        }
         progress.inc();
         if should_interrupt.load(Ordering::Relaxed) {
             bail!("Cancelled by user")
@@ -293,6 +308,12 @@ pub fn render(
         "Aspect ratio is {} off from target",
         (last_checked_aspect_ratio - target_aspect_ratio).abs(),
     ));
+    if !ignored.is_empty() {
+        progress.info(format!(
+            "Ignored {} files due to missing syntax",
+            ignored.len()
+        ))
+    }
 
     Ok(imgbuf)
 }
