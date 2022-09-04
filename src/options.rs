@@ -32,6 +32,10 @@ pub struct Args {
     #[clap(long, default_value_t = 9.0, help_heading = "IMAGE")]
     pub aspect_height: f64,
 
+    /// Open the output image with the standard image viewer.
+    #[clap(long, help_heading = "OUTPUT")]
+    pub open: bool,
+
     /// The path to which to write the output png file
     #[clap(
         long,

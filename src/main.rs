@@ -50,7 +50,11 @@ fn main() -> anyhow::Result<()> {
         &should_interrupt,
     );
     render.shutdown_and_wait();
+    res?.save(&args.output_path)?;
 
-    res?.save(args.output_path)?;
+    if args.open {
+        open::that(&args.output_path)?;
+    }
+
     Ok(())
 }
