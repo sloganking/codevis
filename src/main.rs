@@ -29,8 +29,9 @@ fn main() -> anyhow::Result<()> {
         .auto_configure(prodash::render::line::StreamKind::Stderr),
     );
 
-    let paths = code_visualizer::unicode_content(
+    let (paths, ignored) = code_visualizer::unicode_content(
         &args.input_dir,
+        &args.ignore_extension,
         progress.add_child("search unicode files"),
     )
     .with_context(|| {
@@ -39,6 +40,11 @@ fn main() -> anyhow::Result<()> {
             args.input_dir
         )
     })?;
+    if ignored != 0 {
+        progress.add_child("input").info(format!(
+            "Ignored {ignored} files that matched ignored extensions"
+        ));
+    }
     let res = code_visualizer::render(
         &paths,
         args.column_width_pixels,

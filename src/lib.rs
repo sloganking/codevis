@@ -3,6 +3,7 @@ use bstr::ByteSlice;
 use image::{ImageBuffer, Rgb, RgbImage};
 use prodash::Progress;
 use std::collections::BTreeSet;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use syntect::highlighting::{Style, ThemeSet};
@@ -319,19 +320,29 @@ pub fn render(
 
 pub fn unicode_content(
     path: &Path,
+    ignore_extensions: &[OsString],
     mut progress: impl Progress,
-) -> anyhow::Result<Vec<(PathBuf, String)>> {
+) -> anyhow::Result<(Vec<(PathBuf, String)>, usize)> {
     progress.init(None, Some(prodash::unit::label("files")));
 
     let mut paths = Vec::new();
+    let mut ignored = 0;
     for entry in ignore::Walk::new(path) {
         progress.inc();
         let entry = entry?;
         let path = entry.path();
+        if !ignore_extensions.is_empty()
+            && path.extension().map_or(false, |ext| {
+                ignore_extensions.iter().any(|extension| ext == extension)
+            })
+        {
+            ignored += 1;
+            continue;
+        }
         if let Ok(content) = std::fs::read_to_string(path) {
             paths.push((path.to_owned(), content));
         }
     }
 
-    Ok(paths)
+    Ok((paths, ignored))
 }

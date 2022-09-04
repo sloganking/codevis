@@ -3,8 +3,10 @@ use std::sync::atomic::AtomicBool;
 
 #[test]
 fn renders_self() {
-    let paths =
-        code_visualizer::unicode_content(Path::new("./src/"), prodash::progress::Discard).unwrap();
+    let (paths, ignored) =
+        code_visualizer::unicode_content(Path::new("./src/"), &[], prodash::progress::Discard)
+            .unwrap();
+    assert_eq!(ignored, 0, "no ignore pattern configured");
     code_visualizer::render(
         &paths,
         100,
