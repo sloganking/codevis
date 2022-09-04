@@ -25,7 +25,10 @@ fn main() -> anyhow::Result<()> {
         .auto_configure(prodash::render::line::StreamKind::Stderr),
     );
 
-    let paths = code_visualizer::get_unicode_files_in_dir("./input/")?;
+    let paths = code_visualizer::get_unicode_files_in_dir(
+        "./input/",
+        progress.add_child("search unicode files"),
+    )?;
     let res = code_visualizer::render(
         &paths,
         100,

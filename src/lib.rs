@@ -2,7 +2,6 @@ use anyhow::{bail, Context};
 use glob::glob;
 use image::{ImageBuffer, Rgb, RgbImage};
 use prodash::Progress;
-use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -318,31 +317,27 @@ pub fn render(
     Ok(imgbuf)
 }
 
-pub fn get_unicode_files_in_dir(path: &str) -> anyhow::Result<Vec<PathBuf>> {
-    //> get list of all files in ./input/ using glob
+pub fn get_unicode_files_in_dir(
+    path: &str,
+    mut progress: impl Progress,
+) -> anyhow::Result<Vec<PathBuf>> {
+    let search_params = String::from(path) + "**/*";
+    progress.init(None, Some(prodash::unit::label("files")));
+
     let mut paths = Vec::new();
-
-    let file_delimiter = "";
-    let search_params = String::from(path) + "**/*" + file_delimiter;
-
     for entry in glob(&search_params)? {
+        progress.inc();
         match entry {
             Ok(path) => {
+                if !path.is_file() || std::fs::read_to_string(&path).is_err() {
+                    continue;
+                }
+
                 paths.push(path);
             }
             Err(e) => println!("{:?}", e),
         }
     }
-
-    //<> filter out directories
-    let paths = paths.into_iter().filter(|e| e.is_file());
-
-    //<> filter out non unicode files
-    let paths: Vec<PathBuf> = paths
-        .into_iter()
-        .filter(|e| fs::read_to_string(e).is_ok())
-        .collect();
-    //<
 
     Ok(paths)
 }
