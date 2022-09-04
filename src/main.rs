@@ -35,9 +35,7 @@ fn main() -> anyhow::Result<()> {
         progress.add_child("render"),
         &should_interrupt,
     );
-
-    drop(progress);
-    render.wait();
+    render.shutdown_and_wait();
 
     res?.save("./output.png")?;
     Ok(())

@@ -276,23 +276,16 @@ pub fn render(
 
     //> fill in any empty bottom right corner, with background color
     while line_num < column_line_limit * required_columns {
-        //> get position of current line
-        //> y
-        // let actual_line = (line_num + line_offset) % line_count;
         let cur_y = (line_num % column_line_limit) * 2;
-        //<> x
         let cur_column_x_offset = (line_num / column_line_limit) * column_width;
-        //<
 
         //<> fill line with background color
         for cur_line_x in 0..column_width {
             imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
             imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
         }
-        //<
         line_num += 1;
     }
-    //<
 
     progress.show_throughput(start);
     line_progress.show_throughput(start);
