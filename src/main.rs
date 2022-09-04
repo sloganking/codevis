@@ -10,7 +10,7 @@ fn main() -> anyhow::Result<()> {
     let _ = signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&should_interrupt));
 
     let progress: Arc<prodash::Tree> = prodash::TreeOptions {
-        message_buffer_capacity: 200,
+        message_buffer_capacity: 20,
         ..Default::default()
     }
     .into();
