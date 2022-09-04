@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::SyntaxSet;
 
+#[allow(clippy::too_many_arguments)]
 pub fn render(
     content: &[(PathBuf, String)],
     column_width: u32,
@@ -164,11 +165,6 @@ pub fn render(
     // Create a new ImgBuf with width: imgx and height: imgy
     let mut imgbuf = RgbImage::new(imgx, imgy);
 
-    //<> initialize rendering vars
-    let mut cur_line_x = 0;
-    let mut line_num: u32 = 0;
-    let mut background = Rgb([0, 0, 0]);
-
     // render all lines onto image
     progress.set_name("overall");
     progress.init(
@@ -183,6 +179,12 @@ pub fn render(
 
     //> initialize highlighting themes
     let ts = ThemeSet::load_defaults();
+
+    //<> initialize rendering vars
+    let mut cur_line_x = 0;
+    let mut line_num: u32 = 0;
+    let mut background = Rgb([0, 0, 0]);
+    let mut longest_line_chars = 0;
 
     for (path, content) in content {
         if ignored.contains(path) {
@@ -210,6 +212,8 @@ pub fn render(
 
         for line in content.as_bytes().lines_with_terminator() {
             let line = line.to_str().expect("UTF-8 was source");
+            longest_line_chars = longest_line_chars.max(line.chars().count());
+
             line_progress.inc();
             {
                 //> get position of current line
@@ -217,7 +221,7 @@ pub fn render(
                 let cur_y = (actual_line % column_line_limit) * line_height;
                 let cur_column_x_offset = (actual_line / column_line_limit) * column_width;
 
-                let regions: Vec<(Style, &str)> = highlighter.highlight(&line, &ss);
+                let regions: Vec<(Style, &str)> = highlighter.highlight(line, &ss);
 
                 background = Rgb([
                     regions[0].0.background.r,
@@ -226,6 +230,10 @@ pub fn render(
                 ]);
 
                 for region in regions {
+                    if cur_line_x >= column_width {
+                        break;
+                    }
+
                     let char_color: Rgb<u8> = Rgb([
                         region.0.foreground.r,
                         region.0.foreground.g,
@@ -314,6 +322,9 @@ pub fn render(
 
     progress.show_throughput(start);
     line_progress.show_throughput(start);
+    progress.info(format!(
+        "Longest encountered line in chars: {longest_line_chars}"
+    ));
     progress.info(format!(
         "Aspect ratio is {} off from target",
         (last_checked_aspect_ratio - target_aspect_ratio).abs(),
