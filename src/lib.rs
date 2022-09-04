@@ -19,6 +19,7 @@ pub fn render(
     // unused for now
     // could be used to make a "rolling code" animation
     let line_offset = 0;
+    let start = std::time::Instant::now();
 
     //> read files (for /n counting)
     let total_line_count = {
@@ -167,15 +168,16 @@ pub fn render(
         prodash::unit::label("lines").into(),
     );
 
+    //> initialize highlighting themes
+    let ss = SyntaxSet::load_defaults_newlines();
+    let ts = ThemeSet::load_defaults();
+
     for (path, content) in content {
         progress.inc();
         if should_interrupt.load(Ordering::Relaxed) {
             bail!("Cancelled by user")
         }
 
-        //> initialize highlighting themes
-        let ss = SyntaxSet::load_defaults_newlines();
-        let ts = ThemeSet::load_defaults();
         let mut highlighter = syntect::easy::HighlightLines::new(
             ss.find_syntax_for_file(path)?
                 .unwrap_or_else(|| ss.find_syntax_plain_text()),
@@ -292,13 +294,12 @@ pub fn render(
     }
     //<
 
-    println!("===== Finished Render Stats =====");
-    println!("line_count: {}", total_line_count);
-    println!(
+    progress.show_throughput(start);
+    line_progress.show_throughput(start);
+    progress.info(format!(
         "Aspect ratio is {} off from target",
-        (last_checked_aspect_ratio - target_aspect_ratio).abs()
-    );
-    println!("=================================");
+        (last_checked_aspect_ratio - target_aspect_ratio).abs(),
+    ));
 
     Ok(imgbuf)
 }

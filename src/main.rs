@@ -18,7 +18,7 @@ fn main() -> anyhow::Result<()> {
             frames_per_second: 24.0,
             initial_delay: None,
             timestamp: true,
-            throughput: true,
+            throughput: false,
             hide_cursor: true,
             ..prodash::render::line::Options::default()
         }
