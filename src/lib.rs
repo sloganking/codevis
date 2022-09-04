@@ -251,8 +251,8 @@ pub mod renderer {
 
                                     let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
 
-                                    for x in cur_line_x..cur_line_x + spaces_to_add {
-                                        if x >= column_width {
+                                    for _ in 0..spaces_to_add {
+                                        if cur_line_x >= column_width {
                                             break;
                                         }
 
