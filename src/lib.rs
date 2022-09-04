@@ -1,117 +1,105 @@
-pub mod renderer {
-    use anyhow::{bail, Context};
-    use glob::glob;
-    use image::{ImageBuffer, Rgb, RgbImage};
-    use prodash::Progress;
-    use std::fs;
-    use std::fs::File;
-    use std::io::{BufRead, BufReader};
-    use std::path::PathBuf;
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use syntect::easy::HighlightFile;
-    use syntect::highlighting::{Style, ThemeSet};
-    use syntect::parsing::SyntaxSet;
+use anyhow::{bail, Context};
+use glob::glob;
+use image::{ImageBuffer, Rgb, RgbImage};
+use prodash::Progress;
+use std::fs;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use syntect::easy::HighlightFile;
+use syntect::highlighting::{Style, ThemeSet};
+use syntect::parsing::SyntaxSet;
 
-    pub fn render(
-        paths: &[PathBuf],
-        column_width: u32,
-        target_aspect_ratio: f64,
-        force_full_columns: bool,
-        mut progress: impl prodash::Progress,
-        should_interrupt: &AtomicBool,
-    ) -> anyhow::Result<ImageBuffer<Rgb<u8>, Vec<u8>>> {
-        // unused for now
-        // could be used to make a "rolling code" animation
-        let line_offset = 0;
+pub fn render(
+    paths: &[PathBuf],
+    column_width: u32,
+    target_aspect_ratio: f64,
+    force_full_columns: bool,
+    mut progress: impl prodash::Progress,
+    should_interrupt: &AtomicBool,
+) -> anyhow::Result<ImageBuffer<Rgb<u8>, Vec<u8>>> {
+    // unused for now
+    // could be used to make a "rolling code" animation
+    let line_offset = 0;
 
-        //> read files (for /n counting)
-        let total_line_count = {
-            let mut lines = 0;
-            let mut progress = progress.add_child("count lines");
-            progress.init(None, prodash::unit::label("lines").into());
-            for path in paths {
-                let file = File::open(path)
-                    .with_context(|| format!("Failed to open {path:?} for initial line count"))?;
-                let reader = BufReader::new(file);
+    //> read files (for /n counting)
+    let total_line_count = {
+        let mut lines = 0;
+        let mut progress = progress.add_child("count lines");
+        progress.init(None, prodash::unit::label("lines").into());
+        for path in paths {
+            let file = File::open(path)
+                .with_context(|| format!("Failed to open {path:?} for initial line count"))?;
+            let reader = BufReader::new(file);
 
-                lines += reader
-                    .lines()
-                    .inspect(|_| {
-                        progress.inc();
-                    })
-                    .count();
-            }
-            lines as u32
-        };
-
-        if total_line_count == 0 {
-            bail!(
-                "Did not find a single line to render in {} files",
-                paths.len()
-            );
+            lines += reader
+                .lines()
+                .inspect(|_| {
+                    progress.inc();
+                })
+                .count();
         }
+        lines as u32
+    };
 
-        //> determine image dimensions based on num of lines and constraints
-        let mut last_checked_aspect_ratio: f64 = f64::MAX;
-        let mut column_line_limit = 1;
-        let mut last_column_line_limit = column_line_limit;
-        let mut required_columns;
-        let mut cur_aspect_ratio: f64 =
-            column_width as f64 * total_line_count as f64 / (column_line_limit as f64 * 2.0);
+    if total_line_count == 0 {
+        bail!(
+            "Did not find a single line to render in {} files",
+            paths.len()
+        );
+    }
 
-        //<> determine maximum aspect ratios
-        let tallest_aspect_ratio = column_width as f64 / total_line_count as f64 * 2.0;
-        let widest_aspect_ratio = total_line_count as f64 * column_width as f64 / 2.0;
+    //> determine image dimensions based on num of lines and constraints
+    let mut last_checked_aspect_ratio: f64 = f64::MAX;
+    let mut column_line_limit = 1;
+    let mut last_column_line_limit = column_line_limit;
+    let mut required_columns;
+    let mut cur_aspect_ratio: f64 =
+        column_width as f64 * total_line_count as f64 / (column_line_limit as f64 * 2.0);
+
+    //<> determine maximum aspect ratios
+    let tallest_aspect_ratio = column_width as f64 / total_line_count as f64 * 2.0;
+    let widest_aspect_ratio = total_line_count as f64 * column_width as f64 / 2.0;
+    //<
+
+    if target_aspect_ratio <= tallest_aspect_ratio {
+        //> use tallest possible aspect ratio
+        column_line_limit = total_line_count;
+        required_columns = 1;
+        //<
+    } else if target_aspect_ratio >= widest_aspect_ratio {
+        //> use widest possible aspect ratio
+        column_line_limit = 1;
+        required_columns = total_line_count;
+        //<
+    } else {
+        //> start at widest possible aspect ratio
+        column_line_limit = 1;
+        // required_columns = line_count;
         //<
 
-        if target_aspect_ratio <= tallest_aspect_ratio {
-            //> use tallest possible aspect ratio
-            column_line_limit = total_line_count;
-            required_columns = 1;
-            //<
-        } else if target_aspect_ratio >= widest_aspect_ratio {
-            //> use widest possible aspect ratio
-            column_line_limit = 1;
-            required_columns = total_line_count;
-            //<
-        } else {
-            //> start at widest possible aspect ratio
-            column_line_limit = 1;
-            // required_columns = line_count;
-            //<
+        // de-widen aspect ratio until closest match is found
+        while (last_checked_aspect_ratio - target_aspect_ratio).abs()
+            > (cur_aspect_ratio - target_aspect_ratio).abs()
+        {
+            // remember current aspect ratio
+            last_checked_aspect_ratio = cur_aspect_ratio;
 
-            // de-widen aspect ratio until closest match is found
-            while (last_checked_aspect_ratio - target_aspect_ratio).abs()
-                > (cur_aspect_ratio - target_aspect_ratio).abs()
-            {
-                // remember current aspect ratio
-                last_checked_aspect_ratio = cur_aspect_ratio;
+            if force_full_columns {
+                last_column_line_limit = column_line_limit;
 
-                if force_full_columns {
-                    last_column_line_limit = column_line_limit;
+                //> determine required number of columns
+                required_columns = total_line_count / column_line_limit;
+                if total_line_count % column_line_limit != 0 {
+                    required_columns += 1;
+                }
+                //<
 
-                    //> determine required number of columns
-                    required_columns = total_line_count / column_line_limit;
-                    if total_line_count % column_line_limit != 0 {
-                        required_columns += 1;
-                    }
-                    //<
+                let last_required_columns = required_columns;
 
-                    let last_required_columns = required_columns;
-
-                    // find next full column aspect ratio
-                    while required_columns == last_required_columns {
-                        column_line_limit += 1;
-
-                        //> determine required number of columns
-                        required_columns = total_line_count / column_line_limit;
-                        if total_line_count % column_line_limit != 0 {
-                            required_columns += 1;
-                        }
-                        //<
-                    }
-                } else {
-                    //> generate new aspect ratio
+                // find next full column aspect ratio
+                while required_columns == last_required_columns {
                     column_line_limit += 1;
 
                     //> determine required number of columns
@@ -120,240 +108,241 @@ pub mod renderer {
                         required_columns += 1;
                     }
                     //<
-                    //<
                 }
+            } else {
+                //> generate new aspect ratio
+                column_line_limit += 1;
 
-                cur_aspect_ratio = required_columns as f64 * column_width as f64
-                    / (column_line_limit as f64 * 2.0);
+                //> determine required number of columns
+                required_columns = total_line_count / column_line_limit;
+                if total_line_count % column_line_limit != 0 {
+                    required_columns += 1;
+                }
+                //<
+                //<
             }
 
-            //> re-determine best aspect ratio
-
-            // (Should never not happen, but)
-            // previous while loop would never have been entered if (column_line_limit == 1)
-            // so (column_line_limit -= 1;) would be unnecessary
-            if column_line_limit != 1 && !force_full_columns {
-                // revert to last aspect ratio
-                column_line_limit -= 1;
-            } else if force_full_columns {
-                column_line_limit = last_column_line_limit;
-            }
-
-            //> determine required number of columns
-            required_columns = total_line_count / column_line_limit;
-            if total_line_count % column_line_limit != 0 {
-                required_columns += 1;
-            }
-            //<
-            //<
+            cur_aspect_ratio =
+                required_columns as f64 * column_width as f64 / (column_line_limit as f64 * 2.0);
         }
 
-        //> remake immutable
-        let required_columns = required_columns;
-        let column_line_limit = column_line_limit;
+        //> re-determine best aspect ratio
+
+        // (Should never not happen, but)
+        // previous while loop would never have been entered if (column_line_limit == 1)
+        // so (column_line_limit -= 1;) would be unnecessary
+        if column_line_limit != 1 && !force_full_columns {
+            // revert to last aspect ratio
+            column_line_limit -= 1;
+        } else if force_full_columns {
+            column_line_limit = last_column_line_limit;
+        }
+
+        //> determine required number of columns
+        required_columns = total_line_count / column_line_limit;
+        if total_line_count % column_line_limit != 0 {
+            required_columns += 1;
+        }
+        //<
+        //<
+    }
+
+    //> remake immutable
+    let required_columns = required_columns;
+    let column_line_limit = column_line_limit;
+    //<
+
+    //<> initialize image
+    //> determine x
+    let imgx: u32 = required_columns * column_width;
+
+    //<> determine y
+    let imgy: u32 = if total_line_count < column_line_limit {
+        total_line_count * 2
+    } else {
+        column_line_limit * 2
+    };
+    //<
+
+    // Create a new ImgBuf with width: imgx and height: imgy
+    let mut imgbuf = RgbImage::new(imgx, imgy);
+
+    //<> initialize rendering vars
+    let mut cur_line_x = 0;
+    let mut line = String::new();
+    let mut line_num: u32 = 0;
+    let mut background = Rgb([0, 0, 0]);
+
+    // render all lines onto image
+    progress.set_name("overall");
+    progress.init(Some(paths.len()), prodash::unit::label("files").into());
+    let mut line_progress = progress.add_child("render");
+    line_progress.init(
+        Some(total_line_count as usize),
+        prodash::unit::label("lines").into(),
+    );
+    for path in paths {
+        progress.inc();
+        if should_interrupt.load(Ordering::Relaxed) {
+            bail!("Cancelled by user")
+        }
+
+        //> initialize highlighting themes
+        let ss = SyntaxSet::load_defaults_newlines();
+        let ts = ThemeSet::load_defaults();
+        let mut highlighter = HighlightFile::new(path, &ss, &ts.themes["Solarized (dark)"])?;
         //<
 
-        //<> initialize image
-        //> determine x
-        let imgx: u32 = required_columns * column_width;
+        while highlighter.reader.read_line(&mut line)? > 0 {
+            line_progress.inc();
+            {
+                //> get position of current line
+                //> y
+                let actual_line = (line_num + line_offset) % total_line_count;
+                let cur_y = (actual_line % column_line_limit) * 2;
+                //<> x
+                let cur_column_x_offset = (actual_line / column_line_limit) * column_width;
+                //<
+                //<
 
-        //<> determine y
-        let imgy: u32 = if total_line_count < column_line_limit {
-            total_line_count * 2
-        } else {
-            column_line_limit * 2
-        };
-        //<
+                let regions: Vec<(Style, &str)> = highlighter.highlight_lines.highlight(&line, &ss);
 
-        // Create a new ImgBuf with width: imgx and height: imgy
-        let mut imgbuf = RgbImage::new(imgx, imgy);
+                background = Rgb([
+                    regions[0].0.background.r,
+                    regions[0].0.background.g,
+                    regions[0].0.background.b,
+                ]);
 
-        //<> initialize rendering vars
-        let mut cur_line_x = 0;
-        let mut line = String::new();
-        let mut line_num: u32 = 0;
-        let mut background = Rgb([0, 0, 0]);
-
-        // render all lines onto image
-        progress.set_name("overall");
-        progress.init(Some(paths.len()), prodash::unit::label("files").into());
-        let mut line_progress = progress.add_child("render");
-        line_progress.init(
-            Some(total_line_count as usize),
-            prodash::unit::label("lines").into(),
-        );
-        for path in paths {
-            progress.inc();
-            if should_interrupt.load(Ordering::Relaxed) {
-                bail!("Cancelled by user")
-            }
-
-            //> initialize highlighting themes
-            let ss = SyntaxSet::load_defaults_newlines();
-            let ts = ThemeSet::load_defaults();
-            let mut highlighter = HighlightFile::new(path, &ss, &ts.themes["Solarized (dark)"])?;
-            //<
-
-            while highlighter.reader.read_line(&mut line)? > 0 {
-                line_progress.inc();
-                {
-                    //> get position of current line
-                    //> y
-                    let actual_line = (line_num + line_offset) % total_line_count;
-                    let cur_y = (actual_line % column_line_limit) * 2;
-                    //<> x
-                    let cur_column_x_offset = (actual_line / column_line_limit) * column_width;
-                    //<
-                    //<
-
-                    let regions: Vec<(Style, &str)> =
-                        highlighter.highlight_lines.highlight(&line, &ss);
-
-                    background = Rgb([
-                        regions[0].0.background.r,
-                        regions[0].0.background.g,
-                        regions[0].0.background.b,
+                for region in regions {
+                    let char_color: Rgb<u8> = Rgb([
+                        region.0.foreground.r,
+                        region.0.foreground.g,
+                        region.0.foreground.b,
                     ]);
 
-                    for region in regions {
-                        let char_color: Rgb<u8> = Rgb([
-                            region.0.foreground.r,
-                            region.0.foreground.g,
-                            region.0.foreground.b,
-                        ]);
-
-                        for chr in region.1.chars() {
-                            if cur_line_x >= column_width || region.1.chars().count() == 0 {
-                                break;
-                            }
-
-                            //> place pixel for character
-                            if chr == ' ' || chr == '\n' || chr == '\r' {
-                                imgbuf.put_pixel(
-                                    cur_column_x_offset + cur_line_x,
-                                    cur_y,
-                                    background,
-                                );
-                                imgbuf.put_pixel(
-                                    cur_column_x_offset + cur_line_x,
-                                    cur_y + 1,
-                                    background,
-                                );
-
-                                cur_line_x += 1;
-                            } else if chr == '\t' {
-                                // specifies how many spaces a tab should be rendered as
-                                let tab_spaces = 4;
-
-                                let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
-
-                                for x in cur_line_x..cur_line_x + spaces_to_add {
-                                    if x >= column_width {
-                                        break;
-                                    }
-
-                                    imgbuf.put_pixel(
-                                        cur_column_x_offset + cur_line_x,
-                                        cur_y,
-                                        background,
-                                    );
-                                    imgbuf.put_pixel(
-                                        cur_column_x_offset + cur_line_x,
-                                        cur_y + 1,
-                                        background,
-                                    );
-
-                                    cur_line_x += 1;
-                                }
-                            } else {
-                                imgbuf.put_pixel(
-                                    cur_column_x_offset + cur_line_x,
-                                    cur_y,
-                                    char_color,
-                                );
-                                imgbuf.put_pixel(
-                                    cur_column_x_offset + cur_line_x,
-                                    cur_y + 1,
-                                    char_color,
-                                );
-
-                                cur_line_x += 1;
-                            }
-                            //<
+                    for chr in region.1.chars() {
+                        if cur_line_x >= column_width || region.1.chars().count() == 0 {
+                            break;
                         }
+
+                        //> place pixel for character
+                        if chr == ' ' || chr == '\n' || chr == '\r' {
+                            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
+                            imgbuf.put_pixel(
+                                cur_column_x_offset + cur_line_x,
+                                cur_y + 1,
+                                background,
+                            );
+
+                            cur_line_x += 1;
+                        } else if chr == '\t' {
+                            // specifies how many spaces a tab should be rendered as
+                            let tab_spaces = 4;
+
+                            let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
+
+                            for x in cur_line_x..cur_line_x + spaces_to_add {
+                                if x >= column_width {
+                                    break;
+                                }
+
+                                imgbuf.put_pixel(
+                                    cur_column_x_offset + cur_line_x,
+                                    cur_y,
+                                    background,
+                                );
+                                imgbuf.put_pixel(
+                                    cur_column_x_offset + cur_line_x,
+                                    cur_y + 1,
+                                    background,
+                                );
+
+                                cur_line_x += 1;
+                            }
+                        } else {
+                            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, char_color);
+                            imgbuf.put_pixel(
+                                cur_column_x_offset + cur_line_x,
+                                cur_y + 1,
+                                char_color,
+                            );
+
+                            cur_line_x += 1;
+                        }
+                        //<
                     }
-
-                    while cur_line_x < column_width {
-                        imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
-                        imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
-
-                        cur_line_x += 1;
-                    }
-
-                    cur_line_x = 0;
-                    line_num += 1;
-                } // until NLL this scope is needed so we can clear the buffer after
-                line.clear(); // read_line appends so we need to clear between lines
-            }
-        }
-
-        //> fill in any empty bottom right corner, with background color
-        while line_num < column_line_limit * required_columns {
-            //> get position of current line
-            //> y
-            // let actual_line = (line_num + line_offset) % line_count;
-            let cur_y = (line_num % column_line_limit) * 2;
-            //<> x
-            let cur_column_x_offset = (line_num / column_line_limit) * column_width;
-            //<
-
-            //<> fill line with background color
-            for cur_line_x in 0..column_width {
-                imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
-                imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
-            }
-            //<
-            line_num += 1;
-        }
-        //<
-
-        println!("===== Finished Render Stats =====");
-        println!("line_count: {}", total_line_count);
-        println!(
-            "Aspect ratio is {} off from target",
-            (last_checked_aspect_ratio - target_aspect_ratio).abs()
-        );
-        println!("=================================");
-
-        Ok(imgbuf)
-    }
-
-    pub fn get_unicode_files_in_dir(path: &str) -> anyhow::Result<Vec<PathBuf>> {
-        //> get list of all files in ./input/ using glob
-        let mut paths = Vec::new();
-
-        let file_delimiter = "";
-        let search_params = String::from(path) + "**/*" + file_delimiter;
-
-        for entry in glob(&search_params)? {
-            match entry {
-                Ok(path) => {
-                    paths.push(path);
                 }
-                Err(e) => println!("{:?}", e),
-            }
+
+                while cur_line_x < column_width {
+                    imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
+                    imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
+
+                    cur_line_x += 1;
+                }
+
+                cur_line_x = 0;
+                line_num += 1;
+            } // until NLL this scope is needed so we can clear the buffer after
+            line.clear(); // read_line appends so we need to clear between lines
         }
+    }
 
-        //<> filter out directories
-        let paths = paths.into_iter().filter(|e| e.is_file());
-
-        //<> filter out non unicode files
-        let paths: Vec<PathBuf> = paths
-            .into_iter()
-            .filter(|e| fs::read_to_string(e).is_ok())
-            .collect();
+    //> fill in any empty bottom right corner, with background color
+    while line_num < column_line_limit * required_columns {
+        //> get position of current line
+        //> y
+        // let actual_line = (line_num + line_offset) % line_count;
+        let cur_y = (line_num % column_line_limit) * 2;
+        //<> x
+        let cur_column_x_offset = (line_num / column_line_limit) * column_width;
         //<
 
-        Ok(paths)
+        //<> fill line with background color
+        for cur_line_x in 0..column_width {
+            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
+            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
+        }
+        //<
+        line_num += 1;
     }
+    //<
+
+    println!("===== Finished Render Stats =====");
+    println!("line_count: {}", total_line_count);
+    println!(
+        "Aspect ratio is {} off from target",
+        (last_checked_aspect_ratio - target_aspect_ratio).abs()
+    );
+    println!("=================================");
+
+    Ok(imgbuf)
+}
+
+pub fn get_unicode_files_in_dir(path: &str) -> anyhow::Result<Vec<PathBuf>> {
+    //> get list of all files in ./input/ using glob
+    let mut paths = Vec::new();
+
+    let file_delimiter = "";
+    let search_params = String::from(path) + "**/*" + file_delimiter;
+
+    for entry in glob(&search_params)? {
+        match entry {
+            Ok(path) => {
+                paths.push(path);
+            }
+            Err(e) => println!("{:?}", e),
+        }
+    }
+
+    //<> filter out directories
+    let paths = paths.into_iter().filter(|e| e.is_file());
+
+    //<> filter out non unicode files
+    let paths: Vec<PathBuf> = paths
+        .into_iter()
+        .filter(|e| fs::read_to_string(e).is_ok())
+        .collect();
+    //<
+
+    Ok(paths)
 }

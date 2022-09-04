@@ -1,9 +1,7 @@
-use code_visualizer::renderer;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 fn main() -> anyhow::Result<()> {
-    let paths = renderer::get_unicode_files_in_dir("./input/")?;
     let should_interrupt = Arc::new(AtomicBool::new(false));
     let _ = signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&should_interrupt));
 
@@ -27,7 +25,8 @@ fn main() -> anyhow::Result<()> {
         .auto_configure(prodash::render::line::StreamKind::Stderr),
     );
 
-    let res = renderer::render(
+    let paths = code_visualizer::get_unicode_files_in_dir("./input/")?;
+    let res = code_visualizer::render(
         &paths,
         100,
         16.0 / 9.0,
