@@ -15,3 +15,5 @@ Cargo.lock
 /output.png
 
 .vscode/
+
+*.png
