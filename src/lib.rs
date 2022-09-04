@@ -13,6 +13,7 @@ mod tests {
 }
 
 pub mod renderer {
+    use anyhow::{bail, Context};
     use glob::glob;
     use image::{ImageBuffer, Rgb, RgbImage};
     use prodash::Progress;
@@ -32,7 +33,7 @@ pub mod renderer {
         force_full_columns: bool,
         mut progress: impl prodash::Progress,
         should_interrupt: &AtomicBool,
-    ) -> Option<ImageBuffer<Rgb<u8>, Vec<u8>>> {
+    ) -> anyhow::Result<ImageBuffer<Rgb<u8>, Vec<u8>>> {
         // unused for now
         // could be used to make a "rolling code" animation
         let line_offset = 0;
@@ -43,7 +44,8 @@ pub mod renderer {
             let mut progress = progress.add_child("count lines");
             progress.init(None, prodash::unit::label("lines").into());
             for path in paths {
-                let file = File::open(path).unwrap();
+                let file = File::open(path)
+                    .with_context(|| format!("Failed to open {path:?} for initial line count"))?;
                 let reader = BufReader::new(file);
 
                 lines += reader
@@ -57,7 +59,10 @@ pub mod renderer {
         };
 
         if total_line_count == 0 {
-            return None;
+            bail!(
+                "Did not find a single line to render in {} files",
+                paths.len()
+            );
         }
 
         //> determine image dimensions based on num of lines and constraints
@@ -194,17 +199,16 @@ pub mod renderer {
         for path in paths {
             progress.inc();
             if should_interrupt.load(Ordering::Relaxed) {
-                return None;
+                bail!("Cancelled by user")
             }
 
             //> initialize highlighting themes
             let ss = SyntaxSet::load_defaults_newlines();
             let ts = ThemeSet::load_defaults();
-            let mut highlighter =
-                HighlightFile::new(path, &ss, &ts.themes["Solarized (dark)"]).unwrap();
+            let mut highlighter = HighlightFile::new(path, &ss, &ts.themes["Solarized (dark)"])?;
             //<
 
-            while highlighter.reader.read_line(&mut line).unwrap() > 0 {
+            while highlighter.reader.read_line(&mut line)? > 0 {
                 line_progress.inc();
                 {
                     //> get position of current line
@@ -335,17 +339,17 @@ pub mod renderer {
         );
         println!("=================================");
 
-        Some(imgbuf)
+        Ok(imgbuf)
     }
 
-    pub fn get_unicode_files_in_dir(path: &str) -> Vec<PathBuf> {
+    pub fn get_unicode_files_in_dir(path: &str) -> anyhow::Result<Vec<PathBuf>> {
         //> get list of all files in ./input/ using glob
         let mut paths = Vec::new();
 
         let file_delimiter = "";
         let search_params = String::from(path) + "**/*" + file_delimiter;
 
-        for entry in glob(&search_params).expect("Failed to read glob pattern") {
+        for entry in glob(&search_params)? {
             match entry {
                 Ok(path) => {
                     paths.push(path);
@@ -364,6 +368,6 @@ pub mod renderer {
             .collect();
         //<
 
-        paths
+        Ok(paths)
     }
 }
