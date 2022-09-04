@@ -1,6 +1,5 @@
-use anyhow::{bail, Context};
+use anyhow::bail;
 use bstr::ByteSlice;
-use glob::glob;
 use image::{ImageBuffer, Rgb, RgbImage};
 use prodash::Progress;
 use std::collections::BTreeSet;
@@ -322,20 +321,16 @@ pub fn unicode_content(
     path: &Path,
     mut progress: impl Progress,
 ) -> anyhow::Result<Vec<(PathBuf, String)>> {
-    let search_params = path.join("**/*");
     progress.init(None, Some(prodash::unit::label("files")));
 
     let mut paths = Vec::new();
-    for entry in glob(
-        search_params
-            .to_str()
-            .context("Input path contained illformed UTF-8")?,
-    )? {
+    for entry in ignore::Walk::new(path) {
         progress.inc();
         match entry {
-            Ok(path) => {
-                if let Ok(content) = std::fs::read_to_string(&path) {
-                    paths.push((path, content));
+            Ok(entry) => {
+                let path = entry.path();
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    paths.push((path.to_owned(), content));
                 }
             }
             Err(e) => println!("{:?}", e),
