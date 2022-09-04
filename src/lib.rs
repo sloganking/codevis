@@ -1,17 +1,3 @@
-#[cfg(test)]
-mod tests {
-    use crate::renderer;
-
-    #[test]
-    fn renders_self() {
-        let paths = renderer::get_unicode_files_in_dir("./src/");
-        let img = renderer::render(&paths, 100, 16.0 / 9.0, true, true);
-        if img == None {
-            panic!();
-        }
-    }
-}
-
 pub mod renderer {
     use anyhow::{bail, Context};
     use glob::glob;

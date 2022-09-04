@@ -27,7 +27,6 @@ fn main() -> anyhow::Result<()> {
         .auto_configure(prodash::render::line::StreamKind::Stderr),
     );
 
-    // render files to image, and store in ./output.png
     let res = renderer::render(
         &paths,
         100,
