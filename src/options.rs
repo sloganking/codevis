@@ -19,9 +19,9 @@ pub struct Args {
     #[clap(long, default_value_t = true, help_heading = "IMAGE")]
     pub force_full_columns: bool,
 
-    /// The width of one column of lines of code in pixels.
+    /// The width of one column in pixels, with each character being a pixel wide.
     ///
-    /// The maximum length of a line.
+    /// Lines longer than that will be truncated.
     #[clap(long, default_value_t = 100, help_heading = "IMAGE")]
     pub column_width_pixels: u32,
 
@@ -36,6 +36,15 @@ pub struct Args {
     /// The height side of the desired image aspect.
     #[clap(long, default_value_t = 9.0, help_heading = "IMAGE")]
     pub aspect_height: f64,
+
+    /// The theme to use for rendering. Use `foo` to see a list of possible values
+    #[clap(
+        long,
+        short = 't',
+        default_value = "Solarized (dark)",
+        help_heading = "COLORS"
+    )]
+    pub theme: String,
 
     /// Open the output image with the standard image viewer.
     #[clap(long, help_heading = "OUTPUT")]

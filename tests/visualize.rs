@@ -7,6 +7,8 @@ fn renders_self() {
         code_visualizer::unicode_content(Path::new("./src/"), &[], prodash::progress::Discard)
             .unwrap();
     assert_eq!(ignored, 0, "no ignore pattern configured");
+
+    let theme = "Solarized (dark)";
     code_visualizer::render(
         &paths,
         100,
@@ -14,6 +16,7 @@ fn renders_self() {
         1,
         16.0 / 9.0,
         true,
+        theme,
         prodash::progress::Discard,
         &AtomicBool::default(),
     )
@@ -25,6 +28,7 @@ fn renders_self() {
         2,
         16.0 / 9.0,
         true,
+        theme,
         prodash::progress::Discard,
         &AtomicBool::default(),
     )

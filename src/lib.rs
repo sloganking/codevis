@@ -1,4 +1,4 @@
-use anyhow::bail;
+use anyhow::{bail, Context};
 use bstr::ByteSlice;
 use image::{ImageBuffer, Rgb, RgbImage};
 use prodash::Progress;
@@ -16,6 +16,7 @@ pub fn render(
     line_height: u32,
     target_aspect_ratio: f64,
     force_full_columns: bool,
+    theme: &str,
     mut progress: impl prodash::Progress,
     should_interrupt: &AtomicBool,
 ) -> anyhow::Result<ImageBuffer<Rgb<u8>, Vec<u8>>> {
@@ -195,7 +196,16 @@ pub fn render(
         let mut highlighter = syntect::easy::HighlightLines::new(
             ss.find_syntax_for_file(path)?
                 .unwrap_or_else(|| ss.find_syntax_plain_text()),
-            &ts.themes["Solarized (dark)"],
+            ts.themes.get(theme).with_context(|| {
+                format!(
+                    "Could not find theme {theme:?}, must be one of {}",
+                    ts.themes
+                        .keys()
+                        .map(|s| format!("{s:?}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            })?,
         );
 
         for line in content.as_bytes().lines_with_terminator() {

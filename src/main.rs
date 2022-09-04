@@ -6,6 +6,7 @@ mod options;
 
 fn main() -> anyhow::Result<()> {
     let args: options::Args = clap::Parser::parse();
+
     let should_interrupt = Arc::new(AtomicBool::new(false));
     let _ = signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&should_interrupt));
 
@@ -15,7 +16,7 @@ fn main() -> anyhow::Result<()> {
     }
     .into();
 
-    let render = prodash::render::line(
+    let render_progress = prodash::render::line(
         std::io::stderr(),
         Arc::downgrade(&progress),
         prodash::render::line::Options {
@@ -52,10 +53,11 @@ fn main() -> anyhow::Result<()> {
         args.line_height_pixels,
         args.aspect_width / args.aspect_height,
         args.force_full_columns,
+        &args.theme,
         progress.add_child("render"),
         &should_interrupt,
     );
-    render.shutdown_and_wait();
+    render_progress.shutdown_and_wait();
     res?.save(&args.output_path)?;
 
     if args.open {
