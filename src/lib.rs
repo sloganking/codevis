@@ -326,14 +326,10 @@ pub fn unicode_content(
     let mut paths = Vec::new();
     for entry in ignore::Walk::new(path) {
         progress.inc();
-        match entry {
-            Ok(entry) => {
-                let path = entry.path();
-                if let Ok(content) = std::fs::read_to_string(path) {
-                    paths.push((path.to_owned(), content));
-                }
-            }
-            Err(e) => println!("{:?}", e),
+        let entry = entry?;
+        let path = entry.path();
+        if let Ok(content) = std::fs::read_to_string(path) {
+            paths.push((path.to_owned(), content));
         }
     }
 

@@ -1,3 +1,4 @@
+use anyhow::Context;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -31,7 +32,13 @@ fn main() -> anyhow::Result<()> {
     let paths = code_visualizer::unicode_content(
         &args.input_dir,
         progress.add_child("search unicode files"),
-    )?;
+    )
+    .with_context(|| {
+        format!(
+            "Failed to find input files in {:?} directory",
+            args.input_dir
+        )
+    })?;
     let res = code_visualizer::render(
         &paths,
         args.column_width_pixels,
