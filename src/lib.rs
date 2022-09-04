@@ -1,11 +1,10 @@
 use anyhow::bail;
+use bstr::ByteSlice;
 use glob::glob;
 use image::{ImageBuffer, Rgb, RgbImage};
 use prodash::Progress;
-use std::io::BufRead;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use syntect::easy::HighlightFile;
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::SyntaxSet;
 
@@ -156,7 +155,6 @@ pub fn render(
 
     //<> initialize rendering vars
     let mut cur_line_x = 0;
-    let mut line = String::new();
     let mut line_num: u32 = 0;
     let mut background = Rgb([0, 0, 0]);
 
@@ -169,7 +167,7 @@ pub fn render(
         prodash::unit::label("lines").into(),
     );
 
-    for (path, _content) in content {
+    for (path, content) in content {
         progress.inc();
         if should_interrupt.load(Ordering::Relaxed) {
             bail!("Cancelled by user")
@@ -178,26 +176,22 @@ pub fn render(
         //> initialize highlighting themes
         let ss = SyntaxSet::load_defaults_newlines();
         let ts = ThemeSet::load_defaults();
-        let mut highlighter = HighlightFile::new(path, &ss, &ts.themes["Solarized (dark)"])?;
-        // let highlighter = syntect::easy::HighlightLines::new(
-        //     ss.find_syntax_for_file(path)?
-        //         .unwrap_or_else(|| ss.find_syntax_plain_text()),
-        //     &ts.themes["Solarized (dark)"],
-        // );
+        let mut highlighter = syntect::easy::HighlightLines::new(
+            ss.find_syntax_for_file(path)?
+                .unwrap_or_else(|| ss.find_syntax_plain_text()),
+            &ts.themes["Solarized (dark)"],
+        );
 
-        while highlighter.reader.read_line(&mut line)? > 0 {
+        for line in content.as_bytes().lines_with_terminator() {
+            let line = line.to_str().expect("UTF-8 was source");
             line_progress.inc();
             {
                 //> get position of current line
-                //> y
                 let actual_line = (line_num + line_offset) % total_line_count;
                 let cur_y = (actual_line % column_line_limit) * 2;
-                //<> x
                 let cur_column_x_offset = (actual_line / column_line_limit) * column_width;
-                //<
-                //<
 
-                let regions: Vec<(Style, &str)> = highlighter.highlight_lines.highlight(&line, &ss);
+                let regions: Vec<(Style, &str)> = highlighter.highlight(&line, &ss);
 
                 background = Rgb([
                     regions[0].0.background.r,
@@ -275,7 +269,6 @@ pub fn render(
                 cur_line_x = 0;
                 line_num += 1;
             } // until NLL this scope is needed so we can clear the buffer after
-            line.clear(); // read_line appends so we need to clear between lines
         }
     }
 
