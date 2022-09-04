@@ -1,9 +1,8 @@
-use anyhow::{bail, Context};
+use anyhow::bail;
 use glob::glob;
 use image::{ImageBuffer, Rgb, RgbImage};
 use prodash::Progress;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use syntect::easy::HighlightFile;
@@ -11,7 +10,7 @@ use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::SyntaxSet;
 
 pub fn render(
-    paths: &[PathBuf],
+    content: &[(PathBuf, String)],
     column_width: u32,
     target_aspect_ratio: f64,
     force_full_columns: bool,
@@ -25,19 +24,8 @@ pub fn render(
     //> read files (for /n counting)
     let total_line_count = {
         let mut lines = 0;
-        let mut progress = progress.add_child("count lines");
-        progress.init(None, prodash::unit::label("lines").into());
-        for path in paths {
-            let file = File::open(path)
-                .with_context(|| format!("Failed to open {path:?} for initial line count"))?;
-            let reader = BufReader::new(file);
-
-            lines += reader
-                .lines()
-                .inspect(|_| {
-                    progress.inc();
-                })
-                .count();
+        for (_path, content) in content {
+            lines += content.lines().count()
         }
         lines as u32
     };
@@ -45,7 +33,7 @@ pub fn render(
     if total_line_count == 0 {
         bail!(
             "Did not find a single line to render in {} files",
-            paths.len()
+            content.len()
         );
     }
 
@@ -174,13 +162,14 @@ pub fn render(
 
     // render all lines onto image
     progress.set_name("overall");
-    progress.init(Some(paths.len()), prodash::unit::label("files").into());
+    progress.init(Some(content.len()), prodash::unit::label("files").into());
     let mut line_progress = progress.add_child("render");
     line_progress.init(
         Some(total_line_count as usize),
         prodash::unit::label("lines").into(),
     );
-    for path in paths {
+
+    for (path, _content) in content {
         progress.inc();
         if should_interrupt.load(Ordering::Relaxed) {
             bail!("Cancelled by user")
@@ -190,7 +179,11 @@ pub fn render(
         let ss = SyntaxSet::load_defaults_newlines();
         let ts = ThemeSet::load_defaults();
         let mut highlighter = HighlightFile::new(path, &ss, &ts.themes["Solarized (dark)"])?;
-        //<
+        // let highlighter = syntect::easy::HighlightLines::new(
+        //     ss.find_syntax_for_file(path)?
+        //         .unwrap_or_else(|| ss.find_syntax_plain_text()),
+        //     &ts.themes["Solarized (dark)"],
+        // );
 
         while highlighter.reader.read_line(&mut line)? > 0 {
             line_progress.inc();
@@ -317,10 +310,10 @@ pub fn render(
     Ok(imgbuf)
 }
 
-pub fn get_unicode_files_in_dir(
+pub fn unicode_content(
     path: &str,
     mut progress: impl Progress,
-) -> anyhow::Result<Vec<PathBuf>> {
+) -> anyhow::Result<Vec<(PathBuf, String)>> {
     let search_params = String::from(path) + "**/*";
     progress.init(None, Some(prodash::unit::label("files")));
 
@@ -329,11 +322,9 @@ pub fn get_unicode_files_in_dir(
         progress.inc();
         match entry {
             Ok(path) => {
-                if !path.is_file() || std::fs::read_to_string(&path).is_err() {
-                    continue;
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    paths.push((path, content));
                 }
-
-                paths.push(path);
             }
             Err(e) => println!("{:?}", e),
         }
