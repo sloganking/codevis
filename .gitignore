@@ -15,3 +15,5 @@ input/
 output.png
 
 .vscode/
+
+*.png
