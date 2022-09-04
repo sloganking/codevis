@@ -11,6 +11,7 @@ use syntect::parsing::SyntaxSet;
 pub fn render(
     content: &[(PathBuf, String)],
     column_width: u32,
+    line_height: u32,
     target_aspect_ratio: f64,
     force_full_columns: bool,
     mut progress: impl prodash::Progress,
@@ -109,8 +110,8 @@ pub fn render(
                 //<
             }
 
-            cur_aspect_ratio =
-                required_columns as f64 * column_width as f64 / (column_line_limit as f64 * 2.0);
+            cur_aspect_ratio = required_columns as f64 * column_width as f64
+                / (column_line_limit as f64 * line_height as f64);
         }
 
         //> re-determine best aspect ratio
@@ -130,8 +131,6 @@ pub fn render(
         if total_line_count % column_line_limit != 0 {
             required_columns += 1;
         }
-        //<
-        //<
     }
 
     //> remake immutable
@@ -145,9 +144,9 @@ pub fn render(
 
     //<> determine y
     let imgy: u32 = if total_line_count < column_line_limit {
-        total_line_count * 2
+        total_line_count * line_height
     } else {
-        column_line_limit * 2
+        column_line_limit * line_height
     };
     //<
 
@@ -190,7 +189,7 @@ pub fn render(
             {
                 //> get position of current line
                 let actual_line = (line_num + line_offset) % total_line_count;
-                let cur_y = (actual_line % column_line_limit) * 2;
+                let cur_y = (actual_line % column_line_limit) * line_height;
                 let cur_column_x_offset = (actual_line / column_line_limit) * column_width;
 
                 let regions: Vec<(Style, &str)> = highlighter.highlight(&line, &ss);
@@ -215,12 +214,13 @@ pub fn render(
 
                         //> place pixel for character
                         if chr == ' ' || chr == '\n' || chr == '\r' {
-                            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
-                            imgbuf.put_pixel(
-                                cur_column_x_offset + cur_line_x,
-                                cur_y + 1,
-                                background,
-                            );
+                            for y_pos in cur_y..cur_y + line_height {
+                                imgbuf.put_pixel(
+                                    cur_column_x_offset + cur_line_x,
+                                    y_pos,
+                                    background,
+                                );
+                            }
 
                             cur_line_x += 1;
                         } else if chr == '\t' {
@@ -234,26 +234,24 @@ pub fn render(
                                     break;
                                 }
 
-                                imgbuf.put_pixel(
-                                    cur_column_x_offset + cur_line_x,
-                                    cur_y,
-                                    background,
-                                );
-                                imgbuf.put_pixel(
-                                    cur_column_x_offset + cur_line_x,
-                                    cur_y + 1,
-                                    background,
-                                );
+                                for y_pos in cur_y..cur_y + line_height {
+                                    imgbuf.put_pixel(
+                                        cur_column_x_offset + cur_line_x,
+                                        y_pos,
+                                        background,
+                                    );
+                                }
 
                                 cur_line_x += 1;
                             }
                         } else {
-                            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, char_color);
-                            imgbuf.put_pixel(
-                                cur_column_x_offset + cur_line_x,
-                                cur_y + 1,
-                                char_color,
-                            );
+                            for y_pos in cur_y..cur_y + line_height {
+                                imgbuf.put_pixel(
+                                    cur_column_x_offset + cur_line_x,
+                                    y_pos,
+                                    char_color,
+                                );
+                            }
 
                             cur_line_x += 1;
                         }
@@ -262,8 +260,9 @@ pub fn render(
                 }
 
                 while cur_line_x < column_width {
-                    imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
-                    imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
+                    for y_pos in cur_y..cur_y + line_height {
+                        imgbuf.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
+                    }
 
                     cur_line_x += 1;
                 }
@@ -276,13 +275,14 @@ pub fn render(
 
     //> fill in any empty bottom right corner, with background color
     while line_num < column_line_limit * required_columns {
-        let cur_y = (line_num % column_line_limit) * 2;
+        let cur_y = (line_num % column_line_limit) * line_height;
         let cur_column_x_offset = (line_num / column_line_limit) * column_width;
 
         //<> fill line with background color
         for cur_line_x in 0..column_width {
-            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y, background);
-            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, cur_y + 1, background);
+            for y_pos in cur_y..cur_y + line_height {
+                imgbuf.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
+            }
         }
         line_num += 1;
     }

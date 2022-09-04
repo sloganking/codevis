@@ -1,7 +1,10 @@
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
+mod options;
+
 fn main() -> anyhow::Result<()> {
+    let args: options::Args = clap::Parser::parse();
     let should_interrupt = Arc::new(AtomicBool::new(false));
     let _ = signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&should_interrupt));
 
@@ -13,7 +16,7 @@ fn main() -> anyhow::Result<()> {
 
     let render = prodash::render::line(
         std::io::stderr(),
-        std::sync::Arc::downgrade(&progress),
+        Arc::downgrade(&progress),
         prodash::render::line::Options {
             frames_per_second: 24.0,
             initial_delay: None,
@@ -29,14 +32,15 @@ fn main() -> anyhow::Result<()> {
         code_visualizer::unicode_content("./input/", progress.add_child("search unicode files"))?;
     let res = code_visualizer::render(
         &paths,
-        100,
-        16.0 / 9.0,
-        true,
+        args.column_width_pixels,
+        args.line_height_pixels,
+        args.aspect_width / args.aspect_height,
+        args.force_full_columns,
         progress.add_child("render"),
         &should_interrupt,
     );
     render.shutdown_and_wait();
 
-    res?.save("./output.png")?;
+    res?.save(args.output_path)?;
     Ok(())
 }
