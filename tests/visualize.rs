@@ -1,8 +1,10 @@
+use std::path::Path;
 use std::sync::atomic::AtomicBool;
 
 #[test]
 fn renders_self() {
-    let paths = code_visualizer::unicode_content("./src/", prodash::progress::Discard).unwrap();
+    let paths =
+        code_visualizer::unicode_content(Path::new("./src/"), prodash::progress::Discard).unwrap();
     code_visualizer::render(
         &paths,
         100,

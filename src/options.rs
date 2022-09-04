@@ -2,6 +2,10 @@ use std::path::PathBuf;
 
 #[derive(Debug, clap::Parser)]
 pub struct Args {
+    /// The directory to read UTF-8 encoded text files from.
+    #[clap(long, short = 'i', default_value = "input", help_heading = "INPUT")]
+    pub input_dir: PathBuf,
+
     /// If true, files that would be rendered white due to lack of syntax are skipped.
     #[clap(long, help_heading = "INPUT")]
     pub ignore_files_without_syntax: bool,

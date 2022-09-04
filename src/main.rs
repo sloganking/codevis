@@ -28,8 +28,10 @@ fn main() -> anyhow::Result<()> {
         .auto_configure(prodash::render::line::StreamKind::Stderr),
     );
 
-    let paths =
-        code_visualizer::unicode_content("./input/", progress.add_child("search unicode files"))?;
+    let paths = code_visualizer::unicode_content(
+        &args.input_dir,
+        progress.add_child("search unicode files"),
+    )?;
     let res = code_visualizer::render(
         &paths,
         args.column_width_pixels,
