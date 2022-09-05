@@ -92,12 +92,12 @@ fn sage_image(
         )),
     );
 
-    if img_path.extension() == Some(std::ffi::OsStr::new("png")) {
+    if img_path.extension() == Some(std::ffi::OsStr::new("tif")) {
         let mut out = util::WriteProgress {
             inner: std::io::BufWriter::new(std::fs::File::create(img_path)?),
             progress,
         };
-        image::codecs::png::PngEncoder::new(&mut out).write_image(
+        image::codecs::tiff::TiffEncoder::new(std::io::BufWriter::new(&mut out)).write_image(
             img.as_bytes(),
             img.width(),
             img.height(),
@@ -116,6 +116,8 @@ fn sage_image(
 }
 
 mod util {
+    use std::io::SeekFrom;
+
     pub struct WriteProgress<W, P> {
         pub inner: W,
         pub progress: P,
@@ -134,6 +136,15 @@ mod util {
 
         fn flush(&mut self) -> std::io::Result<()> {
             self.inner.flush()
+        }
+    }
+
+    impl<W, P> std::io::Seek for WriteProgress<W, P>
+    where
+        W: std::io::Seek,
+    {
+        fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+            self.inner.seek(pos)
         }
     }
 }
