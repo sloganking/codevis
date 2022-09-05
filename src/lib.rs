@@ -54,7 +54,7 @@ pub mod renderer {
             return None;
         }
 
-        //> determine image dimensions based on num of lines and contraints
+        //> determine image dimensions based on num of lines and constraints
 
             //> initialize variables
                 let mut last_checked_aspect_ratio: f64 = f64::MAX;
