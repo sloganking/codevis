@@ -49,6 +49,10 @@ pub struct Args {
     #[clap(value_enum, long, default_value_t = code_visualizer::FgColor::StyleAsciiBrightness)]
     pub fg_pixel_color: code_visualizer::FgColor,
 
+    /// The way background pixels are colored.
+    #[clap(value_enum, long, default_value_t = code_visualizer::BgColor::Style)]
+    pub bg_pixel_color: code_visualizer::BgColor,
+
     /// Open the output image with the standard image viewer.
     #[clap(long, help_heading = "OUTPUT")]
     pub open: bool,

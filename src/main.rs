@@ -55,6 +55,7 @@ fn main() -> anyhow::Result<()> {
         args.force_full_columns,
         &args.theme,
         args.fg_pixel_color,
+        args.bg_pixel_color,
         progress.add_child("render"),
         &should_interrupt,
     );

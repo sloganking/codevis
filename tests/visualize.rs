@@ -18,6 +18,7 @@ fn renders_self() {
         true,
         theme,
         code_visualizer::FgColor::Style,
+        code_visualizer::BgColor::Style,
         prodash::progress::Discard,
         &AtomicBool::default(),
     )
@@ -31,6 +32,7 @@ fn renders_self() {
         true,
         theme,
         code_visualizer::FgColor::StyleAsciiBrightness,
+        code_visualizer::BgColor::HelixEditor,
         prodash::progress::Discard,
         &AtomicBool::default(),
     )

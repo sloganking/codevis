@@ -18,6 +18,15 @@ pub enum FgColor {
     StyleAsciiBrightness,
 }
 
+/// Determine the background pixel color.
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum BgColor {
+    /// Use the style of the syntax to color the background pixel.
+    Style,
+    /// The purple color of the Helix Editor.
+    HelixEditor,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn render(
     content: &[(PathBuf, String)],
@@ -28,6 +37,7 @@ pub fn render(
     force_full_columns: bool,
     theme: &str,
     fg_color: FgColor,
+    bg_color: BgColor,
     mut progress: impl prodash::Progress,
     should_interrupt: &AtomicBool,
 ) -> anyhow::Result<ImageBuffer<Rgb<u8>, Vec<u8>>> {
@@ -244,11 +254,14 @@ pub fn render(
 
                 let regions: Vec<(Style, &str)> = highlighter.highlight(line, &ss);
 
-                background = Rgb([
-                    regions[0].0.background.r,
-                    regions[0].0.background.g,
-                    regions[0].0.background.b,
-                ]);
+                background = match bg_color {
+                    BgColor::Style => Rgb([
+                        regions[0].0.background.r,
+                        regions[0].0.background.g,
+                        regions[0].0.background.b,
+                    ]),
+                    BgColor::HelixEditor => Rgb([59, 34, 76]),
+                };
 
                 for (style, region) in regions {
                     if cur_line_x >= column_width {
