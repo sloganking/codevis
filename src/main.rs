@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
         prodash::render::line::Options {
             frames_per_second: 24.0,
             initial_delay: None,
-            timestamp: true,
+            timestamp: false,
             throughput: true,
             hide_cursor: true,
             ..prodash::render::line::Options::default()
