@@ -9,6 +9,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::SyntaxSet;
 
+/// Determine the foreground pixel color.
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum FgColor {
+    /// Use the style of the syntax to color the foreground pixel.
+    Style,
+    /// Encode the ascii value into the brightness of the style color
+    StyleAsciiBrightness,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn render(
     content: &[(PathBuf, String)],
@@ -18,6 +27,7 @@ pub fn render(
     target_aspect_ratio: f64,
     force_full_columns: bool,
     theme: &str,
+    fg_color: FgColor,
     mut progress: impl prodash::Progress,
     should_interrupt: &AtomicBool,
 ) -> anyhow::Result<ImageBuffer<Rgb<u8>, Vec<u8>>> {
@@ -248,13 +258,34 @@ pub fn render(
                         continue;
                     }
 
-                    let char_color: Rgb<u8> =
-                        Rgb([style.foreground.r, style.foreground.g, style.foreground.b]);
-
                     for chr in region.chars() {
                         if cur_line_x >= column_width {
                             break;
                         }
+
+                        let char_color: Rgb<u8> = match fg_color {
+                            FgColor::Style => {
+                                Rgb([style.foreground.r, style.foreground.g, style.foreground.b])
+                            }
+                            FgColor::StyleAsciiBrightness => {
+                                let fg_byte = (chr as usize) & 0xff;
+                                let boost = 2.4;
+                                Rgb([
+                                    (((fg_byte * style.foreground.r as usize) as f32
+                                        / u16::MAX as f32)
+                                        * boost
+                                        * 256.0) as u8,
+                                    (((fg_byte * style.foreground.g as usize) as f32
+                                        / u16::MAX as f32)
+                                        * boost
+                                        * 256.0) as u8,
+                                    (((fg_byte * style.foreground.b as usize) as f32
+                                        / u16::MAX as f32)
+                                        * boost
+                                        * 256.0) as u8,
+                                ])
+                            }
+                        };
 
                         //> place pixel for character
                         if chr == ' ' || chr == '\n' || chr == '\r' {

@@ -54,6 +54,7 @@ fn main() -> anyhow::Result<()> {
         args.aspect_width / args.aspect_height,
         args.force_full_columns,
         &args.theme,
+        args.fg_pixel_color,
         progress.add_child("render"),
         &should_interrupt,
     );

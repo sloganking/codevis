@@ -17,6 +17,7 @@ fn renders_self() {
         16.0 / 9.0,
         true,
         theme,
+        code_visualizer::FgColor::Style,
         prodash::progress::Discard,
         &AtomicBool::default(),
     )
@@ -29,6 +30,7 @@ fn renders_self() {
         16.0 / 9.0,
         true,
         theme,
+        code_visualizer::FgColor::StyleAsciiBrightness,
         prodash::progress::Discard,
         &AtomicBool::default(),
     )
