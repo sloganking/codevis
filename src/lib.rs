@@ -182,8 +182,8 @@ pub fn render(
     };
     //<
     progress.info(format!(
-        "Image dimensions: {imgx} x {imgy} ({} in memory)",
-        bytesize::ByteSize(imgx as u64 * imgy as u64)
+        "Image dimensions: {imgx} x {imgy} x 3 ({} in memory)",
+        bytesize::ByteSize(imgx as u64 * imgy as u64 * 3)
     ));
 
     // Create a new ImgBuf with width: imgx and height: imgy
