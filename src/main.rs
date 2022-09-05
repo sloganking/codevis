@@ -1,4 +1,6 @@
 use anyhow::Context;
+use bstr::ByteSlice;
+use image::ImageEncoder;
 use prodash::Progress;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -48,7 +50,7 @@ fn main() -> anyhow::Result<()> {
             "Ignored {ignored} files that matched ignored extensions"
         ));
     }
-    let res = code_visualizer::render(
+    let img = code_visualizer::render(
         &paths,
         args.column_width_pixels,
         args.ignore_files_without_syntax,
@@ -60,38 +62,67 @@ fn main() -> anyhow::Result<()> {
         args.bg_pixel_color,
         progress.add_child("render"),
         &should_interrupt,
+    )?;
+
+    let start = std::time::Instant::now();
+    let mut progress = progress.add_child("saving");
+    progress.init(
+        Some(img.width() as usize * img.height() as usize),
+        Some(prodash::unit::dynamic_and_mode(
+            prodash::unit::Bytes,
+            prodash::unit::display::Mode::with_throughput(),
+        )),
     );
 
-    match res {
-        Err(err) => {
-            render_progress.shutdown_and_wait();
-            return Err(err);
-        }
-        Ok(img) => {
-            let start = std::time::Instant::now();
-            let mut progress = progress.add_child("saving");
-            progress.init(
-                None,
-                Some(prodash::unit::dynamic_and_mode(
-                    prodash::unit::Bytes,
-                    prodash::unit::display::Mode::with_throughput(),
-                )),
-            );
-
-            img.save(&args.output_path)?;
-            let bytes = args
-                .output_path
-                .metadata()
-                .map_or(0, |md| md.len() as prodash::progress::Step);
-            progress.inc_by(bytes);
-            progress.show_throughput(start)
-        }
+    if args.output_path.extension() == Some(std::ffi::OsStr::new("png")) {
+        let mut out = util::WriteProgress {
+            inner: std::io::BufWriter::new(std::fs::File::create(&args.output_path)?),
+            progress,
+        };
+        image::codecs::png::PngEncoder::new(&mut out).write_image(
+            img.as_bytes(),
+            img.width(),
+            img.height(),
+            image::ColorType::Rgb8,
+        )?;
+        progress = out.progress;
+    } else {
+        img.save(&args.output_path)?;
+        let bytes = args
+            .output_path
+            .metadata()
+            .map_or(0, |md| md.len() as prodash::progress::Step);
+        progress.inc_by(bytes);
     }
-
+    progress.show_throughput(start);
     render_progress.shutdown_and_wait();
+
     if args.open {
         open::that(&args.output_path)?;
     }
 
     Ok(())
+}
+
+mod util {
+    pub struct WriteProgress<W, P> {
+        pub inner: W,
+        pub progress: P,
+    }
+
+    impl<W, P> std::io::Write for WriteProgress<W, P>
+    where
+        W: std::io::Write,
+        P: prodash::Progress,
+    {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            let bytes = self.inner.write(buf)?;
+            self.progress.inc_by(bytes);
+            Ok(bytes)
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            self.inner.flush()
+        }
+    }
 }
