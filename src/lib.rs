@@ -173,12 +173,14 @@ pub fn render(
     progress.set_name("overall");
     progress.init(
         Some(content.len() - ignored.len()),
-        prodash::unit::label("files").into(),
+        prodash::unit::label_and_mode("files", prodash::unit::display::Mode::with_percentage())
+            .into(),
     );
     let mut line_progress = progress.add_child("render");
     line_progress.init(
         Some(total_line_count as usize),
-        prodash::unit::label("lines").into(),
+        prodash::unit::label_and_mode("lines", prodash::unit::display::Mode::with_throughput())
+            .into(),
     );
 
     //> initialize highlighting themes
