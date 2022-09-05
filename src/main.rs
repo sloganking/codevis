@@ -92,12 +92,12 @@ fn sage_image(
         )),
     );
 
-    if img_path.extension() == Some(std::ffi::OsStr::new("tif")) {
+    if img_path.extension() == Some(std::ffi::OsStr::new("tga")) {
         let mut out = util::WriteProgress {
             inner: std::io::BufWriter::new(std::fs::File::create(img_path)?),
             progress,
         };
-        image::codecs::tiff::TiffEncoder::new(std::io::BufWriter::new(&mut out)).write_image(
+        image::codecs::tga::TgaEncoder::new(std::io::BufWriter::new(&mut out)).write_image(
             img.as_bytes(),
             img.width(),
             img.height(),
