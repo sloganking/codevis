@@ -240,21 +240,18 @@ pub fn render(
                     regions[0].0.background.b,
                 ]);
 
-                for region in regions {
+                for (style, region) in regions {
                     if cur_line_x >= column_width {
                         break;
                     }
-                    if region.1.is_empty() {
+                    if region.is_empty() {
                         continue;
                     }
 
-                    let char_color: Rgb<u8> = Rgb([
-                        region.0.foreground.r,
-                        region.0.foreground.g,
-                        region.0.foreground.b,
-                    ]);
+                    let char_color: Rgb<u8> =
+                        Rgb([style.foreground.r, style.foreground.g, style.foreground.b]);
 
-                    for chr in region.1.chars() {
+                    for chr in region.chars() {
                         if cur_line_x >= column_width {
                             break;
                         }
