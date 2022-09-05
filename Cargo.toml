@@ -20,6 +20,7 @@ doctest = false
 prodash = { version = "19.0.1", features = ["render-line", "render-line-crossterm", "signal-hook", "render-line-autoconfigure", "progress-tree"] }
 open = "3.0.2"
 clap = { version = "3.2.20", features = ["derive"] }
+bytesize = "1.1.0"
 bstr = "0.2.17"
 anyhow = "1.0.63"
 signal-hook = "0.3.14"

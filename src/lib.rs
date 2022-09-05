@@ -161,6 +161,10 @@ pub fn render(
         column_line_limit * line_height
     };
     //<
+    progress.info(format!(
+        "Image dimensions: {imgx} x {imgy} ({} in memory)",
+        bytesize::ByteSize(imgx as u64 * imgy as u64)
+    ));
 
     // Create a new ImgBuf with width: imgx and height: imgy
     let mut imgbuf = RgbImage::new(imgx, imgy);
