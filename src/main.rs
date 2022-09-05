@@ -1,4 +1,5 @@
 use anyhow::Context;
+use prodash::Progress;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -60,9 +61,34 @@ fn main() -> anyhow::Result<()> {
         progress.add_child("render"),
         &should_interrupt,
     );
-    render_progress.shutdown_and_wait();
-    res?.save(&args.output_path)?;
 
+    match res {
+        Err(err) => {
+            render_progress.shutdown_and_wait();
+            return Err(err);
+        }
+        Ok(img) => {
+            let start = std::time::Instant::now();
+            let mut progress = progress.add_child("saving");
+            progress.init(
+                None,
+                Some(prodash::unit::dynamic_and_mode(
+                    prodash::unit::Bytes,
+                    prodash::unit::display::Mode::with_throughput(),
+                )),
+            );
+
+            img.save(&args.output_path)?;
+            let bytes = args
+                .output_path
+                .metadata()
+                .map_or(0, |md| md.len() as prodash::progress::Step);
+            progress.inc_by(bytes);
+            progress.show_throughput(start)
+        }
+    }
+
+    render_progress.shutdown_and_wait();
     if args.open {
         open::that(&args.output_path)?;
     }

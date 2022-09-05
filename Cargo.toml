@@ -17,7 +17,7 @@ doctest = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-prodash = { version = "19.0.1", features = ["render-line", "render-line-crossterm", "signal-hook", "render-line-autoconfigure", "progress-tree"] }
+prodash = { version = "19.0.1", features = ["render-line", "render-line-crossterm", "signal-hook", "render-line-autoconfigure", "progress-tree", "unit-bytes"] }
 open = "3.0.2"
 clap = { version = "3.2.20", features = ["derive"] }
 bytesize = "1.1.0"
