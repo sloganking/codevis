@@ -1,7 +1,7 @@
 use anyhow::Context;
 use bstr::ByteSlice;
-use image::ImageEncoder;
-use prodash::Progress;
+use image::{ImageBuffer, ImageEncoder, Rgb};
+use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -64,8 +64,26 @@ fn main() -> anyhow::Result<()> {
         &should_interrupt,
     )?;
 
+    let img_path = &args.output_path;
+    sage_image(img, img_path, progress.add_child("saving"))?;
+
+    if args.open {
+        progress
+            .add_child("opening")
+            .info(img_path.display().to_string());
+        open::that(img_path)?;
+    }
+
+    render_progress.shutdown_and_wait();
+    Ok(())
+}
+
+fn sage_image(
+    img: ImageBuffer<Rgb<u8>, Vec<u8>>,
+    img_path: &PathBuf,
+    mut progress: impl prodash::Progress,
+) -> anyhow::Result<()> {
     let start = std::time::Instant::now();
-    let mut progress = progress.add_child("saving");
     progress.init(
         Some(img.width() as usize * img.height() as usize),
         Some(prodash::unit::dynamic_and_mode(
@@ -74,9 +92,9 @@ fn main() -> anyhow::Result<()> {
         )),
     );
 
-    if args.output_path.extension() == Some(std::ffi::OsStr::new("png")) {
+    if img_path.extension() == Some(std::ffi::OsStr::new("png")) {
         let mut out = util::WriteProgress {
-            inner: std::io::BufWriter::new(std::fs::File::create(&args.output_path)?),
+            inner: std::io::BufWriter::new(std::fs::File::create(img_path)?),
             progress,
         };
         image::codecs::png::PngEncoder::new(&mut out).write_image(
@@ -87,20 +105,13 @@ fn main() -> anyhow::Result<()> {
         )?;
         progress = out.progress;
     } else {
-        img.save(&args.output_path)?;
-        let bytes = args
-            .output_path
+        img.save(img_path)?;
+        let bytes = img_path
             .metadata()
             .map_or(0, |md| md.len() as prodash::progress::Step);
         progress.inc_by(bytes);
     }
     progress.show_throughput(start);
-    render_progress.shutdown_and_wait();
-
-    if args.open {
-        open::that(&args.output_path)?;
-    }
-
     Ok(())
 }
 
