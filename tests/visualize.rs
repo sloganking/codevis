@@ -3,9 +3,13 @@ use std::sync::atomic::AtomicBool;
 
 #[test]
 fn renders_self() {
-    let (paths, ignored) =
-        code_visualizer::unicode_content(Path::new("./src/"), &[], prodash::progress::Discard)
-            .unwrap();
+    let (paths, ignored) = code_visualizer::unicode_content(
+        Path::new("./src/"),
+        &[],
+        prodash::progress::Discard,
+        &AtomicBool::default(),
+    )
+    .unwrap();
     assert_eq!(ignored, 0, "no ignore pattern configured");
 
     let theme = "Solarized (dark)";

@@ -34,6 +34,7 @@ fn main() -> anyhow::Result<()> {
         &args.input_dir,
         &args.ignore_extension,
         progress.add_child("search unicode files"),
+        &should_interrupt,
     )
     .with_context(|| {
         format!(

@@ -398,12 +398,16 @@ pub fn unicode_content(
     path: &Path,
     ignore_extensions: &[OsString],
     mut progress: impl Progress,
+    should_interrupt: &AtomicBool,
 ) -> anyhow::Result<(Vec<(PathBuf, String)>, usize)> {
     progress.init(None, Some(prodash::unit::label("files")));
 
     let mut paths = Vec::new();
     let mut ignored = 0;
     for entry in ignore::Walk::new(path) {
+        if should_interrupt.load(Ordering::Relaxed) {
+            bail!("Cancelled by user")
+        }
         progress.inc();
         let entry = entry?;
         let path = entry.path();
