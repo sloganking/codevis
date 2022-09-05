@@ -239,6 +239,9 @@ pub fn render(
                     if cur_line_x >= column_width {
                         break;
                     }
+                    if region.1.is_empty() {
+                        continue;
+                    }
 
                     let char_color: Rgb<u8> = Rgb([
                         region.0.foreground.r,
@@ -247,7 +250,7 @@ pub fn render(
                     ]);
 
                     for chr in region.1.chars() {
-                        if cur_line_x >= column_width || region.1.chars().count() == 0 {
+                        if cur_line_x >= column_width {
                             break;
                         }
 
