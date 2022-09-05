@@ -1,6 +1,5 @@
 use anyhow::Context;
-use bstr::ByteSlice;
-use image::{ImageBuffer, ImageEncoder, Rgb};
+use image::{ImageBuffer, Rgb};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -92,60 +91,16 @@ fn sage_image(
         )),
     );
 
-    if img_path.extension() == Some(std::ffi::OsStr::new("bmp")) {
-        let mut out = util::WriteProgress {
-            inner: std::io::BufWriter::new(std::fs::File::create(img_path)?),
-            progress,
-        };
-
-        image::codecs::bmp::BmpEncoder::new(&mut out).write_image(
-            img.as_bytes(),
-            img.width(),
-            img.height(),
-            image::ColorType::Rgb8,
-        )?;
-        progress = out.progress;
-    } else {
-        img.save(img_path)?;
-        let bytes = img_path
-            .metadata()
-            .map_or(0, |md| md.len() as prodash::progress::Step);
-        progress.inc_by(bytes);
-    }
+    // There is no image format that can reasonably stream arbitrary image formats, so writing
+    // isn't interactive.
+    // I think the goal would be to write a TGA file (it can handle huge files in theory while being uncompressed)
+    // and write directly into a memory map on disk, or any other format that can.
+    // In the mean time, PNG files work as well even though some apps are buggy with these image resolutions.
+    img.save(img_path)?;
+    let bytes = img_path
+        .metadata()
+        .map_or(0, |md| md.len() as prodash::progress::Step);
+    progress.inc_by(bytes);
     progress.show_throughput(start);
     Ok(())
-}
-
-mod util {
-    use std::io::SeekFrom;
-
-    pub struct WriteProgress<W, P> {
-        pub inner: W,
-        pub progress: P,
-    }
-
-    impl<W, P> std::io::Write for WriteProgress<W, P>
-    where
-        W: std::io::Write,
-        P: prodash::Progress,
-    {
-        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-            let bytes = self.inner.write(buf)?;
-            self.progress.inc_by(bytes);
-            Ok(bytes)
-        }
-
-        fn flush(&mut self) -> std::io::Result<()> {
-            self.inner.flush()
-        }
-    }
-
-    impl<W, P> std::io::Seek for WriteProgress<W, P>
-    where
-        W: std::io::Seek,
-    {
-        fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
-            self.inner.seek(pos)
-        }
-    }
 }
