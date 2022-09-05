@@ -191,6 +191,18 @@ pub fn render(
     let mut line_num: u32 = 0;
     let mut background = Rgb([0, 0, 0]);
     let mut longest_line_chars = 0;
+    let mut prev_syntax = ss.find_syntax_plain_text() as *const _;
+    let theme = ts.themes.get(theme).with_context(|| {
+        format!(
+            "Could not find theme {theme:?}, must be one of {}",
+            ts.themes
+                .keys()
+                .map(|s| format!("{s:?}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    })?;
+    let mut highlighter = syntect::easy::HighlightLines::new(ss.find_syntax_plain_text(), theme);
 
     for (path, content) in content {
         if ignored.contains(path) {
@@ -201,20 +213,13 @@ pub fn render(
             bail!("Cancelled by user")
         }
 
-        let mut highlighter = syntect::easy::HighlightLines::new(
-            ss.find_syntax_for_file(path)?
-                .unwrap_or_else(|| ss.find_syntax_plain_text()),
-            ts.themes.get(theme).with_context(|| {
-                format!(
-                    "Could not find theme {theme:?}, must be one of {}",
-                    ts.themes
-                        .keys()
-                        .map(|s| format!("{s:?}"))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            })?,
-        );
+        let syntax = ss
+            .find_syntax_for_file(path)?
+            .unwrap_or_else(|| ss.find_syntax_plain_text());
+        if syntax as *const _ != prev_syntax {
+            highlighter = syntect::easy::HighlightLines::new(syntax, theme);
+            prev_syntax = syntax as *const _;
+        }
 
         for line in content.as_bytes().lines_with_terminator() {
             let line = line.to_str().expect("UTF-8 was source");
