@@ -50,6 +50,8 @@ fn main() -> anyhow::Result<()> {
             "Ignored {ignored} files that matched ignored extensions"
         ));
     }
+
+    let start = std::time::Instant::now();
     let img = code_visualizer::render(
         paths,
         progress.add_child("render"),
@@ -76,6 +78,13 @@ fn main() -> anyhow::Result<()> {
             .info(img_path.display().to_string());
         open::that(img_path)?;
     }
+    progress.add_child("operation").done(format!(
+        "done in {:.02}s",
+        std::time::Instant::now()
+            .checked_duration_since(start)
+            .unwrap_or_default()
+            .as_secs_f32()
+    ));
 
     render_progress.shutdown_and_wait();
     Ok(())
@@ -88,7 +97,7 @@ fn sage_image(
 ) -> anyhow::Result<()> {
     let start = std::time::Instant::now();
     progress.init(
-        Some(img.width() as usize * img.height() as usize),
+        Some(img.width() as usize * img.height() as usize * 3),
         Some(prodash::unit::dynamic_and_mode(
             prodash::unit::Bytes,
             prodash::unit::display::Mode::with_throughput(),
