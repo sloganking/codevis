@@ -36,6 +36,7 @@ pub struct Options<'a> {
     pub target_aspect_ratio: f64,
 
     pub threads: usize,
+    pub highlight_truncated_lines: bool,
 
     pub fg_color: FgColor,
     pub bg_color: BgColor,
@@ -70,6 +71,7 @@ pub(crate) mod function {
             threads,
             fg_color,
             bg_color,
+            highlight_truncated_lines,
             theme,
             force_full_columns,
             plain,
@@ -283,6 +285,7 @@ pub(crate) mod function {
                         column_width,
                         line_height,
                         total_line_count,
+                        highlight_truncated_lines,
                         line_num,
                         lines_per_column,
                         fg_color,
@@ -338,6 +341,7 @@ pub(crate) mod function {
                                         column_width,
                                         line_height,
                                         total_line_count,
+                                        highlight_truncated_lines,
                                         line_num: 0,
                                         lines_per_column: total_line_count,
                                         fg_color,
@@ -440,6 +444,7 @@ mod chunk {
 
         pub fg_color: FgColor,
         pub bg_color: BgColor,
+        pub highlight_truncated_lines: bool,
     }
 
     /// Return the `(x, y)` offsets to apply to the given line, to wrap columns of lines into the
@@ -464,6 +469,7 @@ mod chunk {
             column_width,
             line_height,
             total_line_count,
+            highlight_truncated_lines,
             mut line_num,
             lines_per_column,
             fg_color,
@@ -491,7 +497,7 @@ mod chunk {
                     .sum();
                 num_chars += chars.count();
                 longest_line_in_chars = longest_line_in_chars.max(num_chars);
-                (num_chars >= column_width as usize)
+                (highlight_truncated_lines && num_chars >= column_width as usize)
                     .then(|| &line[..bytes_till_char_limit])
                     .unwrap_or(line)
             };

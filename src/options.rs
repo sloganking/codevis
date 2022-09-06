@@ -21,6 +21,11 @@ pub struct Args {
     #[clap(long, short = 't', default_value_t = num_cpus::get_physical(), help_heading = "PERFORMANCE")]
     pub threads: usize,
 
+    /// If true, highlighting will be performed on lines truncated to the `--column-width-pixels`, which is faster
+    /// but may lock up syntax highlighting.
+    #[clap(long, help_heading = "PERFORMANCE")]
+    pub highlight_truncated_lines: bool,
+
     /// Assure columns are never empty and continuously filled.
     #[clap(long, default_value_t = true, help_heading = "IMAGE")]
     pub force_full_columns: bool,
