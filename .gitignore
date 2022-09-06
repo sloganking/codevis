@@ -10,9 +10,9 @@ Cargo.lock
 **/*.rs.bk
 
 
-input/
+/input/
 
-output.png
+/output.png
 
 .vscode/
 
