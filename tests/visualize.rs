@@ -20,6 +20,7 @@ fn renders_self() {
         target_aspect_ratio: 0.0,
         fg_color: code_visualizer::render::FgColor::Style,
         bg_color: code_visualizer::render::BgColor::Style,
+        threads: 1,
         theme,
         force_full_columns: false,
         ignore_files_without_syntax: true,
@@ -37,6 +38,7 @@ fn renders_self() {
     opts.line_height = 2;
     opts.fg_color = code_visualizer::render::FgColor::StyleAsciiBrightness;
     opts.bg_color = code_visualizer::render::BgColor::HelixEditor;
+    opts.threads = 3;
 
     code_visualizer::render(
         &paths,

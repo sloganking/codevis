@@ -15,6 +15,12 @@ pub struct Args {
     #[clap(long, help_heading = "INPUT")]
     pub ignore_files_without_syntax: bool,
 
+    /// The number of threads to use for rendering.
+    ///
+    /// '0' is equivalent to using all logical cores, the default is to use all physical ones.
+    #[clap(long, short = 't', default_value_t = num_cpus::get_physical(), help_heading = "PERFORMANCE")]
+    pub threads: usize,
+
     /// Assure columns are never empty and continuously filled.
     #[clap(long, default_value_t = true, help_heading = "IMAGE")]
     pub force_full_columns: bool,
@@ -38,12 +44,7 @@ pub struct Args {
     pub aspect_height: f64,
 
     /// The theme to use for rendering. Use `foo` to see a list of possible values
-    #[clap(
-        long,
-        short = 't',
-        default_value = "Solarized (dark)",
-        help_heading = "COLORS"
-    )]
+    #[clap(long, default_value = "Solarized (dark)", help_heading = "COLORS")]
     pub theme: String,
     /// The way foreground pixels are colored.
     #[clap(value_enum, long, default_value_t = code_visualizer::render::FgColor::StyleAsciiBrightness)]

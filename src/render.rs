@@ -35,6 +35,8 @@ pub struct Options<'a> {
     pub line_height: u32,
     pub target_aspect_ratio: f64,
 
+    pub threads: usize,
+
     pub fg_color: FgColor,
     pub bg_color: BgColor,
     pub theme: &'a str,
@@ -63,6 +65,7 @@ pub(crate) mod function {
             column_width,
             line_height,
             target_aspect_ratio,
+            threads,
             fg_color,
             bg_color,
             theme,
@@ -246,44 +249,51 @@ pub(crate) mod function {
             )
         })?;
 
-        let mut highlighter =
-            syntect::easy::HighlightLines::new(ss.find_syntax_plain_text(), theme);
-        let mut line_num: u32 = 0;
-        let mut longest_line_chars = 0;
-        let mut background = None;
-        for ((path, content), num_content_lines) in content {
-            progress.inc();
-            if should_interrupt.load(Ordering::Relaxed) {
-                bail!("Cancelled by user")
+        let threads = (threads == 0).then(num_cpus::get).unwrap_or(threads);
+        let (mut line_num, longest_line_chars, background) = if threads < 2 {
+            let mut line_num: u32 = 0;
+            let mut longest_line_chars = 0;
+            let mut background = None;
+            let mut highlighter =
+                syntect::easy::HighlightLines::new(ss.find_syntax_plain_text(), theme);
+            for ((path, content), num_content_lines) in content {
+                progress.inc();
+                if should_interrupt.load(Ordering::Relaxed) {
+                    bail!("Cancelled by user")
+                }
+
+                let syntax = ss
+                    .find_syntax_for_file(path)?
+                    .unwrap_or_else(|| ss.find_syntax_plain_text());
+                if syntax as *const _ != prev_syntax {
+                    highlighter = syntect::easy::HighlightLines::new(syntax, theme);
+                    prev_syntax = syntax as *const _;
+                }
+
+                let out = chunk::process(
+                    content,
+                    &mut img,
+                    |line| highlighter.highlight(line, &ss),
+                    chunk::Context {
+                        column_width,
+                        line_height,
+                        total_line_count,
+                        line_num,
+                        lines_per_column,
+                        fg_color,
+                        bg_color,
+                    },
+                );
+                longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
+                line_num += num_content_lines as u32;
+                line_progress.inc_by(num_content_lines);
+                background = out.background;
             }
 
-            let syntax = ss
-                .find_syntax_for_file(path)?
-                .unwrap_or_else(|| ss.find_syntax_plain_text());
-            if syntax as *const _ != prev_syntax {
-                highlighter = syntect::easy::HighlightLines::new(syntax, theme);
-                prev_syntax = syntax as *const _;
-            }
-
-            let out = chunk::process(
-                content,
-                &mut img,
-                |line| highlighter.highlight(line, &ss),
-                chunk::Context {
-                    column_width,
-                    line_height,
-                    total_line_count,
-                    line_num,
-                    lines_per_column,
-                    fg_color,
-                    bg_color,
-                },
-            );
-            longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
-            line_num += num_content_lines as u32;
-            line_progress.inc_by(num_content_lines);
-            background = out.background;
-        }
+            (line_num, longest_line_chars, background)
+        } else {
+            todo!("threading")
+        };
 
         //> fill in any empty bottom right corner, with background color
         while line_num < lines_per_column * required_columns {
