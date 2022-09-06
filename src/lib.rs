@@ -13,6 +13,7 @@ pub fn unicode_content(
     mut progress: impl Progress,
     should_interrupt: &AtomicBool,
 ) -> anyhow::Result<(Vec<(PathBuf, String)>, usize)> {
+    let start = std::time::Instant::now();
     progress.init(None, Some(prodash::unit::label("files")));
 
     let mut paths = Vec::new();
@@ -37,5 +38,6 @@ pub fn unicode_content(
         }
     }
 
+    progress.show_throughput(start);
     Ok((paths, ignored))
 }
