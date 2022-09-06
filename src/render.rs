@@ -58,7 +58,7 @@ pub(crate) mod function {
 
     #[allow(clippy::too_many_arguments)]
     pub fn render(
-        content: &[(PathBuf, String)],
+        content: Vec<(PathBuf, String)>,
         mut progress: impl prodash::Progress,
         should_interrupt: &AtomicBool,
         Options {
@@ -87,7 +87,7 @@ pub(crate) mod function {
             for (path, content) in content {
                 let num_content_lines = content.lines().count();
                 lines += num_content_lines;
-                if ignore_files_without_syntax && ss.find_syntax_for_file(path)?.is_none() {
+                if ignore_files_without_syntax && ss.find_syntax_for_file(&path)?.is_none() {
                     lines -= num_content_lines;
                     num_ignored += 1;
                 } else {
@@ -271,7 +271,7 @@ pub(crate) mod function {
                 }
 
                 let out = chunk::process(
-                    content,
+                    &content,
                     &mut img,
                     |line| highlighter.highlight(line, &ss),
                     chunk::Context {
@@ -292,7 +292,41 @@ pub(crate) mod function {
 
             (line_num, longest_line_chars, background)
         } else {
-            todo!("threading")
+            let mut line_num: u32 = 0;
+            let mut longest_line_chars = 0;
+            let mut background = None;
+            std::thread::scope(|scope| -> anyhow::Result<()> {
+                let (tx, rx) = flume::bounded(content.len());
+                let (ttx, trx) = flume::unbounded();
+                (move || {
+                    for _ in 1..threads {
+                        scope.spawn({
+                            let rx = rx.clone();
+                            let ttx = ttx.clone();
+                            move || -> anyhow::Result<()> {
+                                for content in rx {
+                                    ttx.send(())?;
+                                }
+                                Ok(())
+                            }
+                        });
+                    }
+                })();
+                for work in content {
+                    if should_interrupt.load(Ordering::Relaxed) {
+                        bail!("Cancelled by user")
+                    }
+                    tx.send(work)?;
+                }
+                drop(tx);
+                for output in trx {
+                    if should_interrupt.load(Ordering::Relaxed) {
+                        bail!("Cancelled by user")
+                    }
+                }
+                Ok(())
+            })?;
+            (line_num, longest_line_chars, background)
         };
 
         //> fill in any empty bottom right corner, with background color

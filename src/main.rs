@@ -51,7 +51,7 @@ fn main() -> anyhow::Result<()> {
         ));
     }
     let img = code_visualizer::render(
-        &paths,
+        paths,
         progress.add_child("render"),
         &should_interrupt,
         code_visualizer::render::Options {

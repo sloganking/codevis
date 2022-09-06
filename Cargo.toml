@@ -20,6 +20,7 @@ doctest = false
 prodash = { version = "19.0.1", features = ["render-line", "render-line-crossterm", "signal-hook", "render-line-autoconfigure", "progress-tree", "unit-bytes"] }
 memmap2 = "0.5.7"
 num_cpus = "1.13.1"
+flume = { version = "0.10.14", default-features = false }
 open = "3.0.2"
 clap = { version = "3.2.20", features = ["derive"] }
 bytesize = "1.1.0"

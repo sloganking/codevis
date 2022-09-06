@@ -26,7 +26,7 @@ fn renders_self() {
         ignore_files_without_syntax: true,
     };
     code_visualizer::render(
-        &paths,
+        paths.clone(),
         prodash::progress::Discard,
         &AtomicBool::default(),
         opts,
@@ -41,7 +41,7 @@ fn renders_self() {
     opts.threads = 3;
 
     code_visualizer::render(
-        &paths,
+        paths,
         prodash::progress::Discard,
         &AtomicBool::default(),
         opts,
