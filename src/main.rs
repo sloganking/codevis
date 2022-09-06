@@ -63,7 +63,7 @@ fn main() -> anyhow::Result<()> {
             threads: args.threads,
             highlight_truncated_lines: args.highlight_truncated_lines,
             force_full_columns: args.force_full_columns,
-            plain: args.plain,
+            plain: args.force_plain_syntax,
             theme: &args.theme,
             fg_color: args.fg_pixel_color,
             bg_color: args.bg_pixel_color,

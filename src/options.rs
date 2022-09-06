@@ -23,8 +23,15 @@ pub struct Args {
 
     /// If true, highlighting will be performed on lines truncated to the `--column-width-pixels`, which is faster
     /// but may lock up syntax highlighting.
+    ///
+    /// It may also affect the looks.
+    /// This is particularly interesting in conjunction with `--plain`, which will never lock up.
     #[clap(long, help_heading = "PERFORMANCE")]
     pub highlight_truncated_lines: bool,
+
+    /// Only use plain text file syntax highlighting. It's fastest and won't lock up.
+    #[clap(long, conflicts_with("theme"), help_heading = "PERFORMANCE")]
+    pub force_plain_syntax: bool,
 
     /// Assure columns are never empty and continuously filled.
     #[clap(long, default_value_t = true, help_heading = "IMAGE")]
@@ -51,10 +58,6 @@ pub struct Args {
     /// The theme to use for rendering. Use `foo` to see a list of possible values
     #[clap(long, default_value = "Solarized (dark)", help_heading = "COLORS")]
     pub theme: String,
-
-    /// Only use plain text file syntax highlighting. It's fastest and won't lock up.
-    #[clap(long, conflicts_with("theme"), help_heading = "COLORS")]
-    pub plain: bool,
 
     /// The way foreground pixels are colored.
     #[clap(value_enum, long, default_value_t = code_visualizer::render::FgColor::StyleAsciiBrightness)]
