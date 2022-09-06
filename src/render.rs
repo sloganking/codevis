@@ -297,7 +297,7 @@ pub(crate) mod function {
             let mut longest_line_chars = 0;
             let mut background = None;
             std::thread::scope(|scope| -> anyhow::Result<()> {
-                let (tx, rx) = flume::bounded::<(_, String, _)>(content.len());
+                let (tx, rx) = flume::bounded::<(_, String, _, _)>(content.len());
                 let (ttx, trx) = flume::unbounded();
                 for _ in 1..threads {
                     scope.spawn({
@@ -310,7 +310,7 @@ pub(crate) mod function {
                                 ss.find_syntax_plain_text(),
                                 theme,
                             );
-                            for (path, content, num_content_lines) in rx {
+                            for (path, content, num_content_lines, lines_so_far) in rx {
                                 let syntax = ss
                                     .find_syntax_for_file(path)?
                                     .unwrap_or_else(|| ss.find_syntax_plain_text());
@@ -337,42 +337,46 @@ pub(crate) mod function {
                                         bg_color,
                                     },
                                 );
-                                ttx.send((img, out, num_content_lines))?;
+                                ttx.send((img, out, num_content_lines, lines_so_far))?;
                             }
                             Ok(())
                         }
                     });
                 }
                 drop((rx, ttx));
+                let mut lines_so_far = 0u32;
                 for ((path, content), num_content_lines) in content {
-                    tx.send((path, content, num_content_lines))?;
+                    tx.send((path, content, num_content_lines, lines_so_far))?;
+                    lines_so_far += num_content_lines as u32;
                 }
                 drop(tx);
-                for (sub_img, out, num_content_lines) in trx {
+                for (sub_img, out, num_content_lines, mut lines_so_far) in trx {
                     longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
                     background = out.background;
 
-                    let calc_offsets = |line_num| {
+                    let calc_offsets = |line_num: u32| {
                         let actual_line = line_num % total_line_count;
                         calc_offsets(actual_line, lines_per_column, column_width, line_height)
                     };
 
-                    let (mut x_offset, mut y_offset) = calc_offsets(line_num);
+                    let (mut x_offset, mut y_offset) = calc_offsets(lines_so_far);
                     let mut prev_y = 0;
                     for (x, y, pixel) in sub_img.enumerate_pixels() {
                         let subline_y = y - prev_y;
                         if y != prev_y && subline_y % line_height == 0 {
                             prev_y = y;
-                            line_num += 1;
-                            (x_offset, y_offset) = calc_offsets(line_num);
+                            lines_so_far += 1;
+                            (x_offset, y_offset) = calc_offsets(lines_so_far);
                         }
+                        // TODO: this shouldn't be necessary
                         if y_offset + subline_y >= img.height() {
-                            break;
+                            continue;
                         }
                         img.put_pixel(x + x_offset, y_offset + subline_y, *pixel);
                     }
 
                     line_progress.inc_by(num_content_lines);
+                    line_num += num_content_lines as u32;
                     progress.inc();
                     if should_interrupt.load(Ordering::Relaxed) {
                         bail!("Cancelled by user")

@@ -42,6 +42,15 @@ fn renders_self() {
     opts.target_aspect_ratio = 16.0 / 9.0;
 
     code_visualizer::render(
+        paths.clone(),
+        prodash::progress::Discard,
+        &AtomicBool::default(),
+        opts,
+    )
+    .unwrap();
+
+    opts.line_height = 2;
+    code_visualizer::render(
         paths,
         prodash::progress::Discard,
         &AtomicBool::default(),
