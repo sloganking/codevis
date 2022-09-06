@@ -46,6 +46,7 @@ pub struct Options<'a> {
 }
 
 pub(crate) mod function {
+    use crate::render::chunk::calc_offsets;
     use crate::render::{chunk, Options};
     use anyhow::{bail, Context};
     use image::{ImageBuffer, Pixel, Rgb, RgbImage};
@@ -347,10 +348,28 @@ pub(crate) mod function {
                     tx.send((path, content, num_content_lines))?;
                 }
                 drop(tx);
-                for (_img, out, num_content_lines) in trx {
+                dbg!(img.dimensions());
+                for (sub_img, out, num_content_lines) in trx {
                     longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
-                    line_num += num_content_lines as u32;
                     background = out.background;
+
+                    let calc_offsets = |line_num| {
+                        let actual_line = line_num % total_line_count;
+                        calc_offsets(actual_line, lines_per_column, column_width, line_height)
+                    };
+
+                    let (mut x_offset, mut y_offset) = calc_offsets(line_num);
+                    let mut prev_y = 0;
+
+                    dbg!(sub_img.dimensions(), x_offset, y_offset);
+                    for (x, y, pixel) in sub_img.enumerate_pixels() {
+                        if y != prev_y && (y - prev_y) % line_height == 0 {
+                            prev_y = y;
+                            line_num += 1;
+                            (x_offset, y_offset) = calc_offsets(line_num);
+                        }
+                        img.put_pixel(x + x_offset, y + y_offset, *pixel);
+                    }
 
                     line_progress.inc_by(num_content_lines);
                     progress.inc();
@@ -365,8 +384,8 @@ pub(crate) mod function {
 
         //> fill in any empty bottom right corner, with background color
         while line_num < lines_per_column * required_columns {
-            let cur_y = (line_num % lines_per_column) * line_height;
-            let cur_column_x_offset = (line_num / lines_per_column) * column_width;
+            let (cur_column_x_offset, cur_y) =
+                calc_offsets(line_num, lines_per_column, column_width, line_height);
             let background = background.unwrap_or(Rgb([0, 0, 0]));
 
             for cur_line_x in 0..column_width {
@@ -417,6 +436,20 @@ mod chunk {
         pub bg_color: BgColor,
     }
 
+    /// Return the `(x, y)` offsets to apply to the given line, to wrap columns of lines into the
+    /// target image.
+    pub fn calc_offsets(
+        line_num: u32,
+        lines_per_column: u32,
+        column_width: u32,
+        line_height: u32,
+    ) -> (u32, u32) {
+        (
+            (line_num / lines_per_column) * column_width,
+            (line_num % lines_per_column) * line_height,
+        )
+    }
+
     pub fn process<C>(
         content: &str,
         img: &mut ImageBuffer<Rgb<u8>, C>,
@@ -442,8 +475,8 @@ mod chunk {
             longest_line_in_chars = longest_line_in_chars.max(line.chars().count());
 
             let actual_line = line_num % total_line_count;
-            let cur_y = (actual_line % lines_per_column) * line_height;
-            let cur_column_x_offset = (actual_line / lines_per_column) * column_width;
+            let (cur_column_x_offset, cur_y) =
+                calc_offsets(actual_line, lines_per_column, column_width, line_height);
 
             let regions = highlight(line);
             let background = background.get_or_insert_with(|| bg_color.to_rgb(regions[0].0));

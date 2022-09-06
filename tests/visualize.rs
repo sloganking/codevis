@@ -39,6 +39,7 @@ fn renders_self() {
     opts.fg_color = code_visualizer::render::FgColor::StyleAsciiBrightness;
     opts.bg_color = code_visualizer::render::BgColor::HelixEditor;
     opts.threads = 3;
+    opts.target_aspect_ratio = 16.0 / 9.0;
 
     code_visualizer::render(
         paths,
