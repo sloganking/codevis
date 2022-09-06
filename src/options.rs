@@ -33,6 +33,10 @@ pub struct Args {
     #[clap(long, conflicts_with("theme"), help_heading = "PERFORMANCE")]
     pub force_plain_syntax: bool,
 
+    /// When a file looks up, use this to see which file is about to be highlighted.
+    #[clap(long, help_heading = "MONITORING")]
+    pub display_to_be_processed_file: bool,
+
     /// Assure columns are never empty and continuously filled.
     #[clap(long, default_value_t = true, help_heading = "IMAGE")]
     pub force_full_columns: bool,

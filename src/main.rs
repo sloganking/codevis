@@ -14,7 +14,7 @@ fn main() -> anyhow::Result<()> {
     let _ = signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&should_interrupt));
 
     let progress: Arc<prodash::Tree> = prodash::TreeOptions {
-        message_buffer_capacity: 20,
+        message_buffer_capacity: args.display_to_be_processed_file.then(|| 200).unwrap_or(20),
         ..Default::default()
     }
     .into();
@@ -28,6 +28,7 @@ fn main() -> anyhow::Result<()> {
             timestamp: false,
             throughput: true,
             hide_cursor: true,
+            level_filter: Some(0..=2),
             ..prodash::render::line::Options::default()
         }
         .auto_configure(prodash::render::line::StreamKind::Stderr),
@@ -64,6 +65,7 @@ fn main() -> anyhow::Result<()> {
             highlight_truncated_lines: args.highlight_truncated_lines,
             force_full_columns: args.force_full_columns,
             plain: args.force_plain_syntax,
+            display_to_be_processed_file: args.display_to_be_processed_file,
             theme: &args.theme,
             fg_color: args.fg_pixel_color,
             bg_color: args.bg_pixel_color,

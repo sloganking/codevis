@@ -45,6 +45,7 @@ pub struct Options<'a> {
     pub force_full_columns: bool,
     pub ignore_files_without_syntax: bool,
     pub plain: bool,
+    pub display_to_be_processed_file: bool,
 }
 
 pub(crate) mod function {
@@ -59,7 +60,6 @@ pub(crate) mod function {
     use syntect::highlighting::ThemeSet;
     use syntect::parsing::SyntaxSet;
 
-    #[allow(clippy::too_many_arguments)]
     pub fn render(
         content: Vec<(PathBuf, String)>,
         mut progress: impl prodash::Progress,
@@ -72,6 +72,7 @@ pub(crate) mod function {
             fg_color,
             bg_color,
             highlight_truncated_lines,
+            display_to_be_processed_file,
             theme,
             force_full_columns,
             plain,
@@ -228,7 +229,7 @@ pub(crate) mod function {
             (img, lines_per_column, required_columns)
         };
 
-        progress.set_name("overall");
+        progress.set_name("process");
         progress.init(
             Some(content.len()),
             prodash::unit::label_and_mode("files", prodash::unit::display::Mode::with_percentage())
@@ -269,7 +270,7 @@ pub(crate) mod function {
 
                 if !plain {
                     let syntax = ss
-                        .find_syntax_for_file(path)?
+                        .find_syntax_for_file(&path)?
                         .unwrap_or_else(|| ss.find_syntax_plain_text());
                     if syntax as *const _ != prev_syntax {
                         highlighter = syntect::easy::HighlightLines::new(syntax, theme);
@@ -277,6 +278,9 @@ pub(crate) mod function {
                     }
                 }
 
+                if display_to_be_processed_file {
+                    progress.info(format!("{path:?}"))
+                }
                 let out = chunk::process(
                     &content,
                     &mut img,
@@ -306,11 +310,12 @@ pub(crate) mod function {
             std::thread::scope(|scope| -> anyhow::Result<()> {
                 let (tx, rx) = flume::bounded::<(_, String, _, _)>(content.len());
                 let (ttx, trx) = flume::unbounded();
-                for _ in 1..threads {
+                for tid in 1..threads {
                     scope.spawn({
                         let rx = rx.clone();
                         let ttx = ttx.clone();
                         let ss = &ss;
+                        let mut progress = line_progress.add_child(format!("Thread {tid}"));
                         move || -> anyhow::Result<()> {
                             let mut prev_syntax = ss.find_syntax_plain_text() as *const _;
                             let mut highlighter = syntect::easy::HighlightLines::new(
@@ -320,7 +325,7 @@ pub(crate) mod function {
                             for (path, content, num_content_lines, lines_so_far) in rx {
                                 if !plain {
                                     let syntax = ss
-                                        .find_syntax_for_file(path)?
+                                        .find_syntax_for_file(&path)?
                                         .unwrap_or_else(|| ss.find_syntax_plain_text());
                                     if syntax as *const _ != prev_syntax {
                                         highlighter =
@@ -333,6 +338,9 @@ pub(crate) mod function {
                                     column_width,
                                     num_content_lines as u32 * line_height,
                                 );
+                                if display_to_be_processed_file {
+                                    progress.info(format!("{path:?}"))
+                                }
                                 let out = chunk::process(
                                     &content,
                                     &mut img,
