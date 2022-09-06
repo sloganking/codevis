@@ -1,3 +1,6 @@
+use image::Rgb;
+use syntect::highlighting::Style;
+
 /// Determine the foreground pixel color.
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
 pub enum FgColor {
@@ -16,6 +19,15 @@ pub enum BgColor {
     HelixEditor,
 }
 
+impl BgColor {
+    pub fn to_rgb(&self, style: Style) -> Rgb<u8> {
+        match self {
+            BgColor::Style => Rgb([style.background.r, style.background.g, style.background.b]),
+            BgColor::HelixEditor => Rgb([59, 34, 76]),
+        }
+    }
+}
+
 /// Configure how to render an image.
 #[derive(Debug, Copy, Clone)]
 pub struct Options<'a> {
@@ -32,15 +44,14 @@ pub struct Options<'a> {
 }
 
 pub(crate) mod function {
-    use crate::render::{BgColor, FgColor, Options};
+    use crate::render::{chunk, Options};
     use anyhow::{bail, Context};
-    use bstr::ByteSlice;
     use image::{ImageBuffer, Pixel, Rgb};
     use memmap2::MmapMut;
     use prodash::Progress;
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicBool, Ordering};
-    use syntect::highlighting::{Style, ThemeSet};
+    use syntect::highlighting::ThemeSet;
     use syntect::parsing::SyntaxSet;
 
     #[allow(clippy::too_many_arguments)]
@@ -71,13 +82,13 @@ pub(crate) mod function {
             let mut lines = 0;
             let mut num_ignored = 0;
             for (path, content) in content {
-                let content_lines = content.lines().count();
-                lines += content_lines;
+                let num_content_lines = content.lines().count();
+                lines += num_content_lines;
                 if ignore_files_without_syntax && ss.find_syntax_for_file(path)?.is_none() {
-                    lines -= content_lines;
+                    lines -= num_content_lines;
                     num_ignored += 1;
                 } else {
-                    out.push(((path, content), content_lines))
+                    out.push(((path, content), num_content_lines))
                 }
             }
             (out, lines as u32, num_ignored)
@@ -187,7 +198,7 @@ pub(crate) mod function {
 
         //> remake immutable
         let required_columns = required_columns;
-        let column_line_limit = lines_per_column;
+        let lines_per_column = lines_per_column;
         //<
 
         //<> initialize image
@@ -195,10 +206,10 @@ pub(crate) mod function {
         let imgx: u32 = required_columns * column_width;
 
         //<> determine y
-        let imgy: u32 = if total_line_count < column_line_limit {
+        let imgy: u32 = if total_line_count < lines_per_column {
             total_line_count * line_height
         } else {
-            column_line_limit * line_height
+            lines_per_column * line_height
         };
         //<
         progress.info(format!(
@@ -234,10 +245,6 @@ pub(crate) mod function {
         let ts = ThemeSet::load_defaults();
 
         //<> initialize rendering vars
-        let mut cur_line_x = 0;
-        let mut line_num: u32 = 0;
-        let mut background = Rgb([0, 0, 0]);
-        let mut longest_line_chars = 0;
         let mut prev_syntax = ss.find_syntax_plain_text() as *const _;
         let theme = ts.themes.get(theme).with_context(|| {
             format!(
@@ -251,8 +258,10 @@ pub(crate) mod function {
         })?;
         let mut highlighter =
             syntect::easy::HighlightLines::new(ss.find_syntax_plain_text(), theme);
-
-        for ((path, content), _content_lines) in content {
+        let mut line_num: u32 = 0;
+        let mut longest_line_chars = 0;
+        let mut background = None;
+        for ((path, content), num_content_lines) in content {
             progress.inc();
             if should_interrupt.load(Ordering::Relaxed) {
                 bail!("Cancelled by user")
@@ -266,134 +275,32 @@ pub(crate) mod function {
                 prev_syntax = syntax as *const _;
             }
 
-            for line in content.as_bytes().lines_with_terminator() {
-                let line = line.to_str().expect("UTF-8 was source");
-                longest_line_chars = longest_line_chars.max(line.chars().count());
-
-                line_progress.inc();
-                {
-                    //> get position of current line
-                    let actual_line = line_num % total_line_count;
-                    let cur_y = (actual_line % column_line_limit) * line_height;
-                    let cur_column_x_offset = (actual_line / column_line_limit) * column_width;
-
-                    let regions: Vec<(Style, &str)> = highlighter.highlight(line, &ss);
-
-                    background = match bg_color {
-                        BgColor::Style => Rgb([
-                            regions[0].0.background.r,
-                            regions[0].0.background.g,
-                            regions[0].0.background.b,
-                        ]),
-                        BgColor::HelixEditor => Rgb([59, 34, 76]),
-                    };
-
-                    for (style, region) in regions {
-                        if cur_line_x >= column_width {
-                            break;
-                        }
-                        if region.is_empty() {
-                            continue;
-                        }
-
-                        for chr in region.chars() {
-                            if cur_line_x >= column_width {
-                                break;
-                            }
-
-                            let char_color: Rgb<u8> = match fg_color {
-                                FgColor::Style => Rgb([
-                                    style.foreground.r,
-                                    style.foreground.g,
-                                    style.foreground.b,
-                                ]),
-                                FgColor::StyleAsciiBrightness => {
-                                    let fg_byte = (chr as usize) & 0xff;
-                                    let boost = 2.4;
-                                    Rgb([
-                                        (((fg_byte * style.foreground.r as usize) as f32
-                                            / u16::MAX as f32)
-                                            * boost
-                                            * 256.0) as u8,
-                                        (((fg_byte * style.foreground.g as usize) as f32
-                                            / u16::MAX as f32)
-                                            * boost
-                                            * 256.0) as u8,
-                                        (((fg_byte * style.foreground.b as usize) as f32
-                                            / u16::MAX as f32)
-                                            * boost
-                                            * 256.0) as u8,
-                                    ])
-                                }
-                            };
-
-                            //> place pixel for character
-                            if chr == ' ' || chr == '\n' || chr == '\r' {
-                                for y_pos in cur_y..cur_y + line_height {
-                                    imgbuf.put_pixel(
-                                        cur_column_x_offset + cur_line_x,
-                                        y_pos,
-                                        background,
-                                    );
-                                }
-
-                                cur_line_x += 1;
-                            } else if chr == '\t' {
-                                // specifies how many spaces a tab should be rendered as
-                                let tab_spaces = 4;
-
-                                let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
-
-                                for _ in 0..spaces_to_add {
-                                    if cur_line_x >= column_width {
-                                        break;
-                                    }
-
-                                    for y_pos in cur_y..cur_y + line_height {
-                                        imgbuf.put_pixel(
-                                            cur_column_x_offset + cur_line_x,
-                                            y_pos,
-                                            background,
-                                        );
-                                    }
-
-                                    cur_line_x += 1;
-                                }
-                            } else {
-                                for y_pos in cur_y..cur_y + line_height {
-                                    imgbuf.put_pixel(
-                                        cur_column_x_offset + cur_line_x,
-                                        y_pos,
-                                        char_color,
-                                    );
-                                }
-
-                                cur_line_x += 1;
-                            }
-                            //<
-                        }
-                    }
-
-                    while cur_line_x < column_width {
-                        for y_pos in cur_y..cur_y + line_height {
-                            imgbuf.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
-                        }
-
-                        cur_line_x += 1;
-                    }
-
-                    cur_line_x = 0;
-                    line_num += 1;
-                } // until NLL this scope is needed so we can clear the buffer after
-            }
+            let out = chunk::process(
+                content,
+                &mut imgbuf,
+                |line| highlighter.highlight(line, &ss),
+                chunk::Context {
+                    column_width,
+                    line_height,
+                    total_line_count,
+                    line_num,
+                    lines_per_column,
+                    fg_color,
+                    bg_color,
+                },
+            );
+            longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
+            line_num += num_content_lines as u32;
+            line_progress.inc_by(num_content_lines);
+            background = out.background;
         }
 
         //> fill in any empty bottom right corner, with background color
-        while line_num < column_line_limit * required_columns {
-            let cur_y = (line_num % column_line_limit) * line_height;
-            let cur_column_x_offset = (line_num / column_line_limit) * column_width;
+        while line_num < lines_per_column * required_columns {
+            let cur_y = (line_num % lines_per_column) * line_height;
+            let cur_column_x_offset = (line_num / lines_per_column) * column_width;
+            let background = background.unwrap_or(Rgb([0, 0, 0]));
 
-            //<> fill line with background color
             for cur_line_x in 0..column_width {
                 for y_pos in cur_y..cur_y + line_height {
                     imgbuf.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
@@ -431,6 +338,8 @@ mod chunk {
     pub struct Outcome {
         /// The longest line we encountered in unicode codepoints.
         pub longest_line_in_chars: usize,
+        /// The last used background color
+        pub background: Option<Rgb<u8>>,
     }
 
     pub struct Context {
@@ -463,6 +372,7 @@ mod chunk {
         C: DerefMut,
     {
         let mut longest_line_in_chars = 0;
+        let mut background = None;
         for line in content.as_bytes().lines_with_terminator() {
             let line = line.to_str().expect("UTF-8 was source");
             longest_line_in_chars = longest_line_in_chars.max(line.chars().count());
@@ -472,16 +382,9 @@ mod chunk {
             let cur_column_x_offset = (actual_line / lines_per_column) * column_width;
 
             let regions = highlight(line);
-            let background = match bg_color {
-                BgColor::Style => Rgb([
-                    regions[0].0.background.r,
-                    regions[0].0.background.g,
-                    regions[0].0.background.b,
-                ]),
-                BgColor::HelixEditor => Rgb([59, 34, 76]),
-            };
-
+            let background = background.get_or_insert_with(|| bg_color.to_rgb(regions[0].0));
             let mut cur_line_x = 0;
+
             for (style, region) in regions {
                 if cur_line_x >= column_width {
                     break;
@@ -518,7 +421,7 @@ mod chunk {
 
                     if chr == ' ' || chr == '\n' || chr == '\r' {
                         for y_pos in cur_y..cur_y + line_height {
-                            img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
+                            img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
                         }
 
                         cur_line_x += 1;
@@ -532,7 +435,7 @@ mod chunk {
                             }
 
                             for y_pos in cur_y..cur_y + line_height {
-                                img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
+                                img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
                             }
 
                             cur_line_x += 1;
@@ -549,7 +452,7 @@ mod chunk {
 
             while cur_line_x < column_width {
                 for y_pos in cur_y..cur_y + line_height {
-                    img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
+                    img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
                 }
 
                 cur_line_x += 1;
@@ -560,6 +463,7 @@ mod chunk {
 
         Outcome {
             longest_line_in_chars,
+            background,
         }
     }
 }
