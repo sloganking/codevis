@@ -101,56 +101,68 @@ pub(crate) mod function {
             );
         }
 
-        //> determine image dimensions based on num of lines and constraints
-        let mut last_checked_aspect_ratio: f64 = f64::MAX;
-        let mut lines_per_column = 1;
-        let mut last_column_line_limit = lines_per_column;
-        let mut required_columns;
-        let mut cur_aspect_ratio: f64 =
-            column_width as f64 * total_line_count as f64 / (lines_per_column as f64 * 2.0);
+        let (mut img, lines_per_column, required_columns) = {
+            //> determine image dimensions based on num of lines and constraints
+            let mut lines_per_column = 1;
+            let mut last_checked_aspect_ratio: f64 = f64::MAX;
+            let mut last_column_line_limit = lines_per_column;
+            let mut required_columns;
+            let mut cur_aspect_ratio: f64 =
+                column_width as f64 * total_line_count as f64 / (lines_per_column as f64 * 2.0);
 
-        //<> determine maximum aspect ratios
-        let tallest_aspect_ratio = column_width as f64 / total_line_count as f64 * 2.0;
-        let widest_aspect_ratio = total_line_count as f64 * column_width as f64 / 2.0;
-        //<
-
-        if target_aspect_ratio <= tallest_aspect_ratio {
-            //> use tallest possible aspect ratio
-            lines_per_column = total_line_count;
-            required_columns = 1;
-            //<
-        } else if target_aspect_ratio >= widest_aspect_ratio {
-            //> use widest possible aspect ratio
-            lines_per_column = 1;
-            required_columns = total_line_count;
-            //<
-        } else {
-            //> start at widest possible aspect ratio
-            lines_per_column = 1;
-            // required_columns = line_count;
+            //<> determine maximum aspect ratios
+            let tallest_aspect_ratio = column_width as f64 / total_line_count as f64 * 2.0;
+            let widest_aspect_ratio = total_line_count as f64 * column_width as f64 / 2.0;
             //<
 
-            // de-widen aspect ratio until closest match is found
-            while (last_checked_aspect_ratio - target_aspect_ratio).abs()
-                > (cur_aspect_ratio - target_aspect_ratio).abs()
-            {
-                // remember current aspect ratio
-                last_checked_aspect_ratio = cur_aspect_ratio;
+            if target_aspect_ratio <= tallest_aspect_ratio {
+                //> use tallest possible aspect ratio
+                lines_per_column = total_line_count;
+                required_columns = 1;
+                //<
+            } else if target_aspect_ratio >= widest_aspect_ratio {
+                //> use widest possible aspect ratio
+                lines_per_column = 1;
+                required_columns = total_line_count;
+                //<
+            } else {
+                //> start at widest possible aspect ratio
+                lines_per_column = 1;
+                // required_columns = line_count;
+                //<
 
-                if force_full_columns {
-                    last_column_line_limit = lines_per_column;
+                // de-widen aspect ratio until closest match is found
+                while (last_checked_aspect_ratio - target_aspect_ratio).abs()
+                    > (cur_aspect_ratio - target_aspect_ratio).abs()
+                {
+                    // remember current aspect ratio
+                    last_checked_aspect_ratio = cur_aspect_ratio;
 
-                    //> determine required number of columns
-                    required_columns = total_line_count / lines_per_column;
-                    if total_line_count % lines_per_column != 0 {
-                        required_columns += 1;
-                    }
-                    //<
+                    if force_full_columns {
+                        last_column_line_limit = lines_per_column;
 
-                    let last_required_columns = required_columns;
+                        //> determine required number of columns
+                        required_columns = total_line_count / lines_per_column;
+                        if total_line_count % lines_per_column != 0 {
+                            required_columns += 1;
+                        }
+                        //<
 
-                    // find next full column aspect ratio
-                    while required_columns == last_required_columns {
+                        let last_required_columns = required_columns;
+
+                        // find next full column aspect ratio
+                        while required_columns == last_required_columns {
+                            lines_per_column += 1;
+
+                            //> determine required number of columns
+                            required_columns = total_line_count / lines_per_column;
+                            if total_line_count % lines_per_column != 0 {
+                                required_columns += 1;
+                            }
+                            //<
+                        }
+                    } else {
+                        //> generate new aspect ratio
                         lines_per_column += 1;
 
                         //> determine required number of columns
@@ -159,73 +171,54 @@ pub(crate) mod function {
                             required_columns += 1;
                         }
                         //<
+                        //<
                     }
-                } else {
-                    //> generate new aspect ratio
-                    lines_per_column += 1;
 
-                    //> determine required number of columns
-                    required_columns = total_line_count / lines_per_column;
-                    if total_line_count % lines_per_column != 0 {
-                        required_columns += 1;
-                    }
-                    //<
-                    //<
+                    cur_aspect_ratio = required_columns as f64 * column_width as f64
+                        / (lines_per_column as f64 * line_height as f64);
                 }
 
-                cur_aspect_ratio = required_columns as f64 * column_width as f64
-                    / (lines_per_column as f64 * line_height as f64);
+                //> re-determine best aspect ratio
+
+                // (Should never not happen, but)
+                // previous while loop would never have been entered if (column_line_limit == 1)
+                // so (column_line_limit -= 1;) would be unnecessary
+                if lines_per_column != 1 && !force_full_columns {
+                    // revert to last aspect ratio
+                    lines_per_column -= 1;
+                } else if force_full_columns {
+                    lines_per_column = last_column_line_limit;
+                }
+
+                //> determine required number of columns
+                required_columns = total_line_count / lines_per_column;
+                if total_line_count % lines_per_column != 0 {
+                    required_columns += 1;
+                }
             }
 
-            //> re-determine best aspect ratio
+            let imgx: u32 = required_columns * column_width;
+            let imgy: u32 = total_line_count.min(lines_per_column) * line_height;
+            progress.info(format!(
+                "Image dimensions: {imgx} x {imgy} x 3 ({} in virtual memory)",
+                bytesize::ByteSize(imgx as u64 * imgy as u64 * 3)
+            ));
 
-            // (Should never not happen, but)
-            // previous while loop would never have been entered if (column_line_limit == 1)
-            // so (column_line_limit -= 1;) would be unnecessary
-            if lines_per_column != 1 && !force_full_columns {
-                // revert to last aspect ratio
-                lines_per_column -= 1;
-            } else if force_full_columns {
-                lines_per_column = last_column_line_limit;
-            }
+            let img = ImageBuffer::<Rgb<u8>, _>::from_raw(
+                imgx,
+                imgy,
+                memmap2::MmapMut::map_anon(
+                    imgx as usize * imgy as usize * Rgb::<u8>::CHANNEL_COUNT as usize,
+                )?,
+            )
+            .expect("correct size computation above");
 
-            //> determine required number of columns
-            required_columns = total_line_count / lines_per_column;
-            if total_line_count % lines_per_column != 0 {
-                required_columns += 1;
-            }
-        }
-
-        //> remake immutable
-        let required_columns = required_columns;
-        let lines_per_column = lines_per_column;
-        //<
-
-        //<> initialize image
-        //> determine x
-        let imgx: u32 = required_columns * column_width;
-
-        //<> determine y
-        let imgy: u32 = if total_line_count < lines_per_column {
-            total_line_count * line_height
-        } else {
-            lines_per_column * line_height
+            progress.info(format!(
+                "Aspect ratio is {} off from target",
+                (last_checked_aspect_ratio - target_aspect_ratio).abs(),
+            ));
+            (img, lines_per_column, required_columns)
         };
-        //<
-        progress.info(format!(
-            "Image dimensions: {imgx} x {imgy} x 3 ({} in virtual memory)",
-            bytesize::ByteSize(imgx as u64 * imgy as u64 * 3)
-        ));
-
-        // Create a new ImgBuf with width: imgx and height: imgy
-        let mut imgbuf = ImageBuffer::<Rgb<u8>, _>::from_raw(
-            imgx,
-            imgy,
-            memmap2::MmapMut::map_anon(
-                imgx as usize * imgy as usize * Rgb::<u8>::CHANNEL_COUNT as usize,
-            )?,
-        )
-        .expect("correct size computation above");
 
         // render all lines onto image
         progress.set_name("overall");
@@ -241,10 +234,7 @@ pub(crate) mod function {
                 .into(),
         );
 
-        //> initialize highlighting themes
         let ts = ThemeSet::load_defaults();
-
-        //<> initialize rendering vars
         let mut prev_syntax = ss.find_syntax_plain_text() as *const _;
         let theme = ts.themes.get(theme).with_context(|| {
             format!(
@@ -256,6 +246,7 @@ pub(crate) mod function {
                     .join(", ")
             )
         })?;
+
         let mut highlighter =
             syntect::easy::HighlightLines::new(ss.find_syntax_plain_text(), theme);
         let mut line_num: u32 = 0;
@@ -277,7 +268,7 @@ pub(crate) mod function {
 
             let out = chunk::process(
                 content,
-                &mut imgbuf,
+                &mut img,
                 |line| highlighter.highlight(line, &ss),
                 chunk::Context {
                     column_width,
@@ -303,7 +294,7 @@ pub(crate) mod function {
 
             for cur_line_x in 0..column_width {
                 for y_pos in cur_y..cur_y + line_height {
-                    imgbuf.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
+                    img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
                 }
             }
             line_num += 1;
@@ -314,15 +305,11 @@ pub(crate) mod function {
         progress.info(format!(
             "Longest encountered line in chars: {longest_line_chars}"
         ));
-        progress.info(format!(
-            "Aspect ratio is {} off from target",
-            (last_checked_aspect_ratio - target_aspect_ratio).abs(),
-        ));
         if num_ignored != 0 {
             progress.info(format!("Ignored {num_ignored} files due to missing syntax",))
         }
 
-        Ok(imgbuf)
+        Ok(img)
     }
 }
 
