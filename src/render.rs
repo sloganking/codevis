@@ -350,7 +350,7 @@ pub(crate) mod function {
                     lines_so_far += num_content_lines as u32;
                 }
                 drop(tx);
-                for (sub_img, out, num_content_lines, mut lines_so_far) in trx {
+                for (sub_img, out, num_content_lines, lines_so_far) in trx {
                     longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
                     background = out.background;
 
@@ -359,20 +359,14 @@ pub(crate) mod function {
                         calc_offsets(actual_line, lines_per_column, column_width, line_height)
                     };
 
-                    let (mut x_offset, mut y_offset) = calc_offsets(lines_so_far);
-                    let mut prev_y = 0;
-                    for (x, y, pixel) in sub_img.enumerate_pixels() {
-                        let subline_y = y - prev_y;
-                        if y != prev_y && subline_y % line_height == 0 {
-                            prev_y = y;
-                            lines_so_far += 1;
-                            (x_offset, y_offset) = calc_offsets(lines_so_far);
+                    for line in 0..num_content_lines as u32 {
+                        let (x_offset, line_y) = calc_offsets(lines_so_far + line);
+                        for x in 0..column_width {
+                            for height in 0..line_height {
+                                let pix = sub_img.get_pixel(x, line * line_height + height);
+                                img.put_pixel(x_offset + x, line_y + height, *pix);
+                            }
                         }
-                        // TODO: this shouldn't be necessary
-                        if y_offset + subline_y >= img.height() {
-                            continue;
-                        }
-                        img.put_pixel(x + x_offset, y_offset + subline_y, *pixel);
                     }
 
                     line_progress.inc_by(num_content_lines);

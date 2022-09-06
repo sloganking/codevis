@@ -61,7 +61,6 @@ fn various_renders() {
 }
 
 #[test]
-#[ignore]
 fn multi_threading_produces_same_result_as_single_threaded_mode() {
     let (paths, ignored) = code_visualizer::unicode_content(
         Path::new("./src/"),
