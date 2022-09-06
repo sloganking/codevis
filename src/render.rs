@@ -61,7 +61,6 @@ pub(crate) mod function {
     ) -> anyhow::Result<ImageBuffer<Rgb<u8>, MmapMut>> {
         // unused for now
         // could be used to make a "rolling code" animation
-        let line_offset = 0;
         let start = std::time::Instant::now();
 
         let ss = SyntaxSet::load_defaults_newlines();
@@ -93,11 +92,11 @@ pub(crate) mod function {
 
         //> determine image dimensions based on num of lines and constraints
         let mut last_checked_aspect_ratio: f64 = f64::MAX;
-        let mut column_line_limit = 1;
-        let mut last_column_line_limit = column_line_limit;
+        let mut lines_per_column = 1;
+        let mut last_column_line_limit = lines_per_column;
         let mut required_columns;
         let mut cur_aspect_ratio: f64 =
-            column_width as f64 * total_line_count as f64 / (column_line_limit as f64 * 2.0);
+            column_width as f64 * total_line_count as f64 / (lines_per_column as f64 * 2.0);
 
         //<> determine maximum aspect ratios
         let tallest_aspect_ratio = column_width as f64 / total_line_count as f64 * 2.0;
@@ -106,17 +105,17 @@ pub(crate) mod function {
 
         if target_aspect_ratio <= tallest_aspect_ratio {
             //> use tallest possible aspect ratio
-            column_line_limit = total_line_count;
+            lines_per_column = total_line_count;
             required_columns = 1;
             //<
         } else if target_aspect_ratio >= widest_aspect_ratio {
             //> use widest possible aspect ratio
-            column_line_limit = 1;
+            lines_per_column = 1;
             required_columns = total_line_count;
             //<
         } else {
             //> start at widest possible aspect ratio
-            column_line_limit = 1;
+            lines_per_column = 1;
             // required_columns = line_count;
             //<
 
@@ -128,11 +127,11 @@ pub(crate) mod function {
                 last_checked_aspect_ratio = cur_aspect_ratio;
 
                 if force_full_columns {
-                    last_column_line_limit = column_line_limit;
+                    last_column_line_limit = lines_per_column;
 
                     //> determine required number of columns
-                    required_columns = total_line_count / column_line_limit;
-                    if total_line_count % column_line_limit != 0 {
+                    required_columns = total_line_count / lines_per_column;
+                    if total_line_count % lines_per_column != 0 {
                         required_columns += 1;
                     }
                     //<
@@ -141,22 +140,22 @@ pub(crate) mod function {
 
                     // find next full column aspect ratio
                     while required_columns == last_required_columns {
-                        column_line_limit += 1;
+                        lines_per_column += 1;
 
                         //> determine required number of columns
-                        required_columns = total_line_count / column_line_limit;
-                        if total_line_count % column_line_limit != 0 {
+                        required_columns = total_line_count / lines_per_column;
+                        if total_line_count % lines_per_column != 0 {
                             required_columns += 1;
                         }
                         //<
                     }
                 } else {
                     //> generate new aspect ratio
-                    column_line_limit += 1;
+                    lines_per_column += 1;
 
                     //> determine required number of columns
-                    required_columns = total_line_count / column_line_limit;
-                    if total_line_count % column_line_limit != 0 {
+                    required_columns = total_line_count / lines_per_column;
+                    if total_line_count % lines_per_column != 0 {
                         required_columns += 1;
                     }
                     //<
@@ -164,7 +163,7 @@ pub(crate) mod function {
                 }
 
                 cur_aspect_ratio = required_columns as f64 * column_width as f64
-                    / (column_line_limit as f64 * line_height as f64);
+                    / (lines_per_column as f64 * line_height as f64);
             }
 
             //> re-determine best aspect ratio
@@ -172,23 +171,23 @@ pub(crate) mod function {
             // (Should never not happen, but)
             // previous while loop would never have been entered if (column_line_limit == 1)
             // so (column_line_limit -= 1;) would be unnecessary
-            if column_line_limit != 1 && !force_full_columns {
+            if lines_per_column != 1 && !force_full_columns {
                 // revert to last aspect ratio
-                column_line_limit -= 1;
+                lines_per_column -= 1;
             } else if force_full_columns {
-                column_line_limit = last_column_line_limit;
+                lines_per_column = last_column_line_limit;
             }
 
             //> determine required number of columns
-            required_columns = total_line_count / column_line_limit;
-            if total_line_count % column_line_limit != 0 {
+            required_columns = total_line_count / lines_per_column;
+            if total_line_count % lines_per_column != 0 {
                 required_columns += 1;
             }
         }
 
         //> remake immutable
         let required_columns = required_columns;
-        let column_line_limit = column_line_limit;
+        let column_line_limit = lines_per_column;
         //<
 
         //<> initialize image
@@ -274,7 +273,7 @@ pub(crate) mod function {
                 line_progress.inc();
                 {
                     //> get position of current line
-                    let actual_line = (line_num + line_offset) % total_line_count;
+                    let actual_line = line_num % total_line_count;
                     let cur_y = (actual_line % column_line_limit) * line_height;
                     let cur_column_x_offset = (actual_line / column_line_limit) * column_width;
 
@@ -422,51 +421,145 @@ pub(crate) mod function {
 
 #[allow(dead_code)]
 mod chunk {
+    use crate::render::{BgColor, FgColor};
+    use bstr::ByteSlice;
     use image::{ImageBuffer, Rgb};
-    use std::path::Path;
-
-    /// Essentially a rectangle of pixels in memory, with an embedded offset to change the starting position
-    /// into the bigger picture.
-    pub struct Frame<C> {
-        /// The underlying buffer
-        buf: ImageBuffer<Rgb<u8>, C>,
-
-        /// The amount of pixels per line in horizontal direction.
-        column_width: u32,
-        /// The amount of pixels per line
-        line_height: u32,
-        /// The amount of lines.
-        lines: u32,
-
-        /// Offset in pixels along with width, always a multiple of column-width.
-        x_ofs: u32,
-        /// The starting line of the column
-        y_ofs: u32,
-    }
+    use std::ops::{Deref, DerefMut};
+    use syntect::highlighting::Style;
 
     /// The result of processing a chunk.
-    pub struct Outcome<C> {
-        pub frame: Frame<C>,
+    pub struct Outcome {
         /// The longest line we encountered in unicode codepoints.
-        pub longest_line_in_chars: u32,
+        pub longest_line_in_chars: usize,
     }
 
-    /// A piece of work to process
-    pub struct Work<'a> {
-        /// The path from which `content` was read
-        pub path: &'a Path,
-        /// The UTF-8 content at `path`
-        pub content: &'a str,
-        /// The starting position in x (in pixels) of the parent image
-        pub start_x_pos: u32,
-        /// The starting position in y (in lines) of the parent image, with line-height taken into account
-        pub start_y_pos: u32,
+    pub struct Context {
+        pub column_width: u32,
+        pub line_height: u32,
+        pub total_line_count: u32,
+        pub line_num: u32,
+        pub lines_per_column: u32,
+
+        pub fg_color: FgColor,
+        pub bg_color: BgColor,
     }
 
     pub fn process<C>(
-        _work: Work,
-        _highlighter: &mut syntect::easy::HighlightLines<'_>,
-    ) -> Outcome<C> {
-        todo!()
+        content: &str,
+        img: &mut ImageBuffer<Rgb<u8>, C>,
+        mut highlight: impl FnMut(&str) -> Vec<(Style, &str)>,
+        Context {
+            column_width,
+            line_height,
+            total_line_count,
+            mut line_num,
+            lines_per_column,
+            fg_color,
+            bg_color,
+        }: Context,
+    ) -> Outcome
+    where
+        C: Deref<Target = [u8]>,
+        C: DerefMut,
+    {
+        let mut longest_line_in_chars = 0;
+        for line in content.as_bytes().lines_with_terminator() {
+            let line = line.to_str().expect("UTF-8 was source");
+            longest_line_in_chars = longest_line_in_chars.max(line.chars().count());
+
+            let actual_line = line_num % total_line_count;
+            let cur_y = (actual_line % lines_per_column) * line_height;
+            let cur_column_x_offset = (actual_line / lines_per_column) * column_width;
+
+            let regions = highlight(line);
+            let background = match bg_color {
+                BgColor::Style => Rgb([
+                    regions[0].0.background.r,
+                    regions[0].0.background.g,
+                    regions[0].0.background.b,
+                ]),
+                BgColor::HelixEditor => Rgb([59, 34, 76]),
+            };
+
+            let mut cur_line_x = 0;
+            for (style, region) in regions {
+                if cur_line_x >= column_width {
+                    break;
+                }
+                if region.is_empty() {
+                    continue;
+                }
+
+                for chr in region.chars() {
+                    if cur_line_x >= column_width {
+                        break;
+                    }
+
+                    let char_color: Rgb<u8> = match fg_color {
+                        FgColor::Style => {
+                            Rgb([style.foreground.r, style.foreground.g, style.foreground.b])
+                        }
+                        FgColor::StyleAsciiBrightness => {
+                            let fg_byte = (chr as usize) & 0xff;
+                            let boost = 2.4;
+                            Rgb([
+                                (((fg_byte * style.foreground.r as usize) as f32 / u16::MAX as f32)
+                                    * boost
+                                    * 256.0) as u8,
+                                (((fg_byte * style.foreground.g as usize) as f32 / u16::MAX as f32)
+                                    * boost
+                                    * 256.0) as u8,
+                                (((fg_byte * style.foreground.b as usize) as f32 / u16::MAX as f32)
+                                    * boost
+                                    * 256.0) as u8,
+                            ])
+                        }
+                    };
+
+                    if chr == ' ' || chr == '\n' || chr == '\r' {
+                        for y_pos in cur_y..cur_y + line_height {
+                            img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
+                        }
+
+                        cur_line_x += 1;
+                    } else if chr == '\t' {
+                        let tab_spaces = 4;
+                        let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
+
+                        for _ in 0..spaces_to_add {
+                            if cur_line_x >= column_width {
+                                break;
+                            }
+
+                            for y_pos in cur_y..cur_y + line_height {
+                                img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
+                            }
+
+                            cur_line_x += 1;
+                        }
+                    } else {
+                        for y_pos in cur_y..cur_y + line_height {
+                            img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, char_color);
+                        }
+
+                        cur_line_x += 1;
+                    }
+                }
+            }
+
+            while cur_line_x < column_width {
+                for y_pos in cur_y..cur_y + line_height {
+                    img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
+                }
+
+                cur_line_x += 1;
+            }
+
+            line_num += 1;
+        }
+
+        Outcome {
+            longest_line_in_chars,
+        }
     }
 }
