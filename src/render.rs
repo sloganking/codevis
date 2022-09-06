@@ -199,17 +199,17 @@ pub(crate) mod function {
 
             let imgx: u32 = required_columns * column_width;
             let imgy: u32 = total_line_count.min(lines_per_column) * line_height;
+            let channel_count = Rgb::<u8>::CHANNEL_COUNT;
+            let num_pixels = imgx as usize * imgy as usize * channel_count as usize;
             progress.info(format!(
-                "Image dimensions: {imgx} x {imgy} x 3 ({} in virtual memory)",
-                bytesize::ByteSize(imgx as u64 * imgy as u64 * 3)
+                "Image dimensions: {imgx} x {imgy} x {channel_count} ({} in virtual memory)",
+                bytesize::ByteSize(num_pixels as u64)
             ));
 
             let img = ImageBuffer::<Rgb<u8>, _>::from_raw(
                 imgx,
                 imgy,
-                memmap2::MmapMut::map_anon(
-                    imgx as usize * imgy as usize * Rgb::<u8>::CHANNEL_COUNT as usize,
-                )?,
+                memmap2::MmapMut::map_anon(num_pixels)?,
             )
             .expect("correct size computation above");
 
@@ -220,7 +220,6 @@ pub(crate) mod function {
             (img, lines_per_column, required_columns)
         };
 
-        // render all lines onto image
         progress.set_name("overall");
         progress.init(
             Some(content.len()),
