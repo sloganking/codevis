@@ -1,6 +1,7 @@
 use anyhow::{bail, Context};
 use bstr::ByteSlice;
-use image::{ImageBuffer, Rgb, RgbImage};
+use image::{ImageBuffer, Pixel, Rgb};
+use memmap2::MmapMut;
 use prodash::Progress;
 use std::collections::BTreeSet;
 use std::ffi::OsString;
@@ -40,7 +41,7 @@ pub fn render(
     bg_color: BgColor,
     mut progress: impl prodash::Progress,
     should_interrupt: &AtomicBool,
-) -> anyhow::Result<ImageBuffer<Rgb<u8>, Vec<u8>>> {
+) -> anyhow::Result<ImageBuffer<Rgb<u8>, MmapMut>> {
     // unused for now
     // could be used to make a "rolling code" animation
     let line_offset = 0;
@@ -182,12 +183,19 @@ pub fn render(
     };
     //<
     progress.info(format!(
-        "Image dimensions: {imgx} x {imgy} x 3 ({} in memory)",
+        "Image dimensions: {imgx} x {imgy} x 3 ({} in virtual memory)",
         bytesize::ByteSize(imgx as u64 * imgy as u64 * 3)
     ));
 
     // Create a new ImgBuf with width: imgx and height: imgy
-    let mut imgbuf = RgbImage::new(imgx, imgy);
+    let mut imgbuf = ImageBuffer::<Rgb<u8>, _>::from_raw(
+        imgx,
+        imgy,
+        memmap2::MmapMut::map_anon(
+            imgx as usize * imgy as usize * Rgb::<u8>::CHANNEL_COUNT as usize,
+        )?,
+    )
+    .expect("correct size computation above");
 
     // render all lines onto image
     progress.set_name("overall");

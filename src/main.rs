@@ -1,5 +1,6 @@
 use anyhow::Context;
 use image::{ImageBuffer, Rgb};
+use memmap2::MmapMut;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -78,7 +79,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn sage_image(
-    img: ImageBuffer<Rgb<u8>, Vec<u8>>,
+    img: ImageBuffer<Rgb<u8>, MmapMut>,
     img_path: &PathBuf,
     mut progress: impl prodash::Progress,
 ) -> anyhow::Result<()> {
