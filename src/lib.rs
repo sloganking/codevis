@@ -15,6 +15,14 @@ pub fn unicode_content(
 ) -> anyhow::Result<(Vec<(PathBuf, String)>, usize)> {
     let start = std::time::Instant::now();
     progress.init(None, Some(prodash::unit::label("files")));
+    let mut content_progress = progress.add_child("content");
+    content_progress.init(
+        None,
+        Some(prodash::unit::dynamic_and_mode(
+            prodash::unit::Bytes,
+            prodash::unit::display::Mode::with_throughput(),
+        )),
+    );
 
     let mut paths = Vec::new();
     let mut ignored = 0;
@@ -34,10 +42,12 @@ pub fn unicode_content(
             continue;
         }
         if let Ok(content) = std::fs::read_to_string(path) {
+            content_progress.inc_by(content.len());
             paths.push((path.to_owned(), content));
         }
     }
 
     progress.show_throughput(start);
+    content_progress.show_throughput(start);
     Ok((paths, ignored))
 }
