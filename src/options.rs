@@ -25,10 +25,6 @@ pub struct Args {
     #[clap(long, default_value_t = true, help_heading = "IMAGE")]
     pub force_full_columns: bool,
 
-    /// Only use plain text file syntax highlighting. It's fastest and won't lock up.
-    #[clap(long, help_heading = "IMAGE")]
-    pub plain: bool,
-
     /// The width of one column in pixels, with each character being a pixel wide.
     ///
     /// Lines longer than that will be truncated.
@@ -50,6 +46,11 @@ pub struct Args {
     /// The theme to use for rendering. Use `foo` to see a list of possible values
     #[clap(long, default_value = "Solarized (dark)", help_heading = "COLORS")]
     pub theme: String,
+
+    /// Only use plain text file syntax highlighting. It's fastest and won't lock up.
+    #[clap(long, conflicts_with("theme"), help_heading = "COLORS")]
+    pub plain: bool,
+
     /// The way foreground pixels are colored.
     #[clap(value_enum, long, default_value_t = code_visualizer::render::FgColor::StyleAsciiBrightness)]
     pub fg_pixel_color: code_visualizer::render::FgColor,
