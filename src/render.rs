@@ -470,8 +470,24 @@ mod chunk {
         let mut longest_line_in_chars = 0;
         let mut background = None;
         for line in content.as_bytes().lines_with_terminator() {
-            let line = line.to_str().expect("UTF-8 was source");
-            longest_line_in_chars = longest_line_in_chars.max(line.chars().count());
+            let line = {
+                let line = line.to_str().expect("UTF-8 was source");
+                let mut num_chars = 0;
+                let mut chars = line.chars();
+                let bytes_till_char_limit: usize = chars
+                    .by_ref()
+                    .take(column_width as usize)
+                    .map(|c| {
+                        num_chars += 1;
+                        c.len_utf8()
+                    })
+                    .sum();
+                num_chars += chars.count();
+                longest_line_in_chars = longest_line_in_chars.max(num_chars);
+                (num_chars >= column_width as usize)
+                    .then(|| &line[..bytes_till_char_limit])
+                    .unwrap_or(line)
+            };
 
             let actual_line = line_num % total_line_count;
             let (cur_column_x_offset, cur_y) =
