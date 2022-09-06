@@ -48,7 +48,7 @@ pub struct Options<'a> {
 pub(crate) mod function {
     use crate::render::{chunk, Options};
     use anyhow::{bail, Context};
-    use image::{ImageBuffer, Pixel, Rgb};
+    use image::{ImageBuffer, Pixel, Rgb, RgbImage};
     use memmap2::MmapMut;
     use prodash::Progress;
     use std::path::PathBuf;
@@ -296,30 +296,64 @@ pub(crate) mod function {
             let mut longest_line_chars = 0;
             let mut background = None;
             std::thread::scope(|scope| -> anyhow::Result<()> {
-                let (tx, rx) = flume::bounded(content.len());
+                let (tx, rx) = flume::bounded::<(_, String, _)>(content.len());
                 let (ttx, trx) = flume::unbounded();
-                (move || {
-                    for _ in 1..threads {
-                        scope.spawn({
-                            let rx = rx.clone();
-                            let ttx = ttx.clone();
-                            move || -> anyhow::Result<()> {
-                                for content in rx {
-                                    ttx.send(())?;
+                for _ in 1..threads {
+                    scope.spawn({
+                        let rx = rx.clone();
+                        let ttx = ttx.clone();
+                        let ss = &ss;
+                        move || -> anyhow::Result<()> {
+                            let mut prev_syntax = ss.find_syntax_plain_text() as *const _;
+                            let mut highlighter = syntect::easy::HighlightLines::new(
+                                ss.find_syntax_plain_text(),
+                                theme,
+                            );
+                            for (path, content, num_content_lines) in rx {
+                                let syntax = ss
+                                    .find_syntax_for_file(path)?
+                                    .unwrap_or_else(|| ss.find_syntax_plain_text());
+                                if syntax as *const _ != prev_syntax {
+                                    highlighter = syntect::easy::HighlightLines::new(syntax, theme);
+                                    prev_syntax = syntax as *const _;
                                 }
-                                Ok(())
+
+                                let mut img = RgbImage::new(
+                                    column_width,
+                                    num_content_lines as u32 * line_height,
+                                );
+                                let out = chunk::process(
+                                    &content,
+                                    &mut img,
+                                    |line| highlighter.highlight(line, ss),
+                                    chunk::Context {
+                                        column_width,
+                                        line_height,
+                                        total_line_count,
+                                        line_num: 0,
+                                        lines_per_column: total_line_count,
+                                        fg_color,
+                                        bg_color,
+                                    },
+                                );
+                                ttx.send((img, out, num_content_lines))?;
                             }
-                        });
-                    }
-                })();
-                for work in content {
-                    if should_interrupt.load(Ordering::Relaxed) {
-                        bail!("Cancelled by user")
-                    }
-                    tx.send(work)?;
+                            Ok(())
+                        }
+                    });
+                }
+                drop((rx, ttx));
+                for ((path, content), num_content_lines) in content {
+                    tx.send((path, content, num_content_lines))?;
                 }
                 drop(tx);
-                for output in trx {
+                for (_img, out, num_content_lines) in trx {
+                    longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
+                    line_num += num_content_lines as u32;
+                    background = out.background;
+
+                    line_progress.inc_by(num_content_lines);
+                    progress.inc();
                     if should_interrupt.load(Ordering::Relaxed) {
                         bail!("Cancelled by user")
                     }
