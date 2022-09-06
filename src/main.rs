@@ -52,16 +52,18 @@ fn main() -> anyhow::Result<()> {
     }
     let img = code_visualizer::render(
         &paths,
-        args.column_width_pixels,
-        args.ignore_files_without_syntax,
-        args.line_height_pixels,
-        args.aspect_width / args.aspect_height,
-        args.force_full_columns,
-        &args.theme,
-        args.fg_pixel_color,
-        args.bg_pixel_color,
         progress.add_child("render"),
         &should_interrupt,
+        code_visualizer::render::Options {
+            column_width: args.column_width_pixels,
+            line_height: args.line_height_pixels,
+            target_aspect_ratio: args.aspect_width / args.aspect_height,
+            force_full_columns: args.force_full_columns,
+            theme: &args.theme,
+            fg_color: args.fg_pixel_color,
+            bg_color: args.bg_pixel_color,
+            ignore_files_without_syntax: args.ignore_files_without_syntax,
+        },
     )?;
 
     let img_path = &args.output_path;

@@ -1,5 +1,5 @@
 /// Determine the foreground pixel color.
-#[derive(clap::ValueEnum, Clone, Debug)]
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
 pub enum FgColor {
     /// Use the style of the syntax to color the foreground pixel.
     Style,
@@ -8,7 +8,7 @@ pub enum FgColor {
 }
 
 /// Determine the background pixel color.
-#[derive(clap::ValueEnum, Clone, Debug)]
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
 pub enum BgColor {
     /// Use the style of the syntax to color the background pixel.
     Style,
@@ -16,8 +16,23 @@ pub enum BgColor {
     HelixEditor,
 }
 
+/// Configure how to render an image.
+#[derive(Debug, Copy, Clone)]
+pub struct Options<'a> {
+    pub column_width: u32,
+    pub line_height: u32,
+    pub target_aspect_ratio: f64,
+
+    pub fg_color: FgColor,
+    pub bg_color: BgColor,
+    pub theme: &'a str,
+
+    pub force_full_columns: bool,
+    pub ignore_files_without_syntax: bool,
+}
+
 pub(crate) mod function {
-    use crate::render::{BgColor, FgColor};
+    use crate::render::{BgColor, FgColor, Options};
     use anyhow::{bail, Context};
     use bstr::ByteSlice;
     use image::{ImageBuffer, Pixel, Rgb};
@@ -31,16 +46,18 @@ pub(crate) mod function {
     #[allow(clippy::too_many_arguments)]
     pub fn render(
         content: &[(PathBuf, String)],
-        column_width: u32,
-        ignore_files_without_syntax: bool,
-        line_height: u32,
-        target_aspect_ratio: f64,
-        force_full_columns: bool,
-        theme: &str,
-        fg_color: FgColor,
-        bg_color: BgColor,
         mut progress: impl prodash::Progress,
         should_interrupt: &AtomicBool,
+        Options {
+            column_width,
+            line_height,
+            target_aspect_ratio,
+            fg_color,
+            bg_color,
+            theme,
+            force_full_columns,
+            ignore_files_without_syntax,
+        }: Options,
     ) -> anyhow::Result<ImageBuffer<Rgb<u8>, MmapMut>> {
         // unused for now
         // could be used to make a "rolling code" animation
