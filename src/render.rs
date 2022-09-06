@@ -274,7 +274,7 @@ pub(crate) mod function {
                 let out = chunk::process(
                     &content,
                     &mut img,
-                    |line| highlighter.highlight(line, &ss),
+                    |line| highlighter.highlight_line(line, &ss),
                     chunk::Context {
                         column_width,
                         line_height,
@@ -284,7 +284,7 @@ pub(crate) mod function {
                         fg_color,
                         bg_color,
                     },
-                );
+                )?;
                 longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
                 line_num += num_content_lines as u32;
                 line_progress.inc_by(num_content_lines);
@@ -326,7 +326,7 @@ pub(crate) mod function {
                                 let out = chunk::process(
                                     &content,
                                     &mut img,
-                                    |line| highlighter.highlight(line, ss),
+                                    |line| highlighter.highlight_line(line, ss),
                                     chunk::Context {
                                         column_width,
                                         line_height,
@@ -336,7 +336,7 @@ pub(crate) mod function {
                                         fg_color,
                                         bg_color,
                                     },
-                                );
+                                )?;
                                 ttx.send((img, out, num_content_lines, lines_so_far))?;
                             }
                             Ok(())
@@ -452,7 +452,7 @@ mod chunk {
     pub fn process<C>(
         content: &str,
         img: &mut ImageBuffer<Rgb<u8>, C>,
-        mut highlight: impl FnMut(&str) -> Vec<(Style, &str)>,
+        mut highlight: impl FnMut(&str) -> Result<Vec<(Style, &str)>, syntect::Error>,
         Context {
             column_width,
             line_height,
@@ -462,7 +462,7 @@ mod chunk {
             fg_color,
             bg_color,
         }: Context,
-    ) -> Outcome
+    ) -> anyhow::Result<Outcome>
     where
         C: Deref<Target = [u8]>,
         C: DerefMut,
@@ -477,7 +477,7 @@ mod chunk {
             let (cur_column_x_offset, cur_y) =
                 calc_offsets(actual_line, lines_per_column, column_width, line_height);
 
-            let regions = highlight(line);
+            let regions = highlight(line)?;
             let background = background.get_or_insert_with(|| bg_color.to_rgb(regions[0].0));
             let mut cur_line_x = 0;
 
@@ -557,9 +557,9 @@ mod chunk {
             line_num += 1;
         }
 
-        Outcome {
+        Ok(Outcome {
             longest_line_in_chars,
             background,
-        }
+        })
     }
 }
