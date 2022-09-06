@@ -46,12 +46,12 @@ pub struct Args {
     )]
     pub theme: String,
     /// The way foreground pixels are colored.
-    #[clap(value_enum, long, default_value_t = code_visualizer::FgColor::StyleAsciiBrightness)]
-    pub fg_pixel_color: code_visualizer::FgColor,
+    #[clap(value_enum, long, default_value_t = code_visualizer::render::FgColor::StyleAsciiBrightness)]
+    pub fg_pixel_color: code_visualizer::render::FgColor,
 
     /// The way background pixels are colored.
-    #[clap(value_enum, long, default_value_t = code_visualizer::BgColor::Style)]
-    pub bg_pixel_color: code_visualizer::BgColor,
+    #[clap(value_enum, long, default_value_t = code_visualizer::render::BgColor::Style)]
+    pub bg_pixel_color: code_visualizer::render::BgColor,
 
     /// Open the output image with the standard image viewer.
     #[clap(long, help_heading = "OUTPUT")]

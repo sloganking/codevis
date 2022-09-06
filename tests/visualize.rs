@@ -21,8 +21,8 @@ fn renders_self() {
         16.0 / 9.0,
         true,
         theme,
-        code_visualizer::FgColor::Style,
-        code_visualizer::BgColor::Style,
+        code_visualizer::render::FgColor::Style,
+        code_visualizer::render::BgColor::Style,
         prodash::progress::Discard,
         &AtomicBool::default(),
     )
@@ -35,8 +35,8 @@ fn renders_self() {
         16.0 / 9.0,
         true,
         theme,
-        code_visualizer::FgColor::StyleAsciiBrightness,
-        code_visualizer::BgColor::HelixEditor,
+        code_visualizer::render::FgColor::StyleAsciiBrightness,
+        code_visualizer::render::BgColor::HelixEditor,
         prodash::progress::Discard,
         &AtomicBool::default(),
     )

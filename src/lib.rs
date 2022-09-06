@@ -4,8 +4,8 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-mod render;
-pub use render::{render, BgColor, FgColor};
+pub mod render;
+pub use render::function::render;
 
 pub fn unicode_content(
     path: &Path,
