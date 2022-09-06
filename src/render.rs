@@ -348,7 +348,6 @@ pub(crate) mod function {
                     tx.send((path, content, num_content_lines))?;
                 }
                 drop(tx);
-                dbg!(img.dimensions());
                 for (sub_img, out, num_content_lines) in trx {
                     longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
                     background = out.background;
@@ -360,15 +359,17 @@ pub(crate) mod function {
 
                     let (mut x_offset, mut y_offset) = calc_offsets(line_num);
                     let mut prev_y = 0;
-
-                    dbg!(sub_img.dimensions(), x_offset, y_offset);
                     for (x, y, pixel) in sub_img.enumerate_pixels() {
-                        if y != prev_y && (y - prev_y) % line_height == 0 {
+                        let subline_y = y - prev_y;
+                        if y != prev_y && subline_y % line_height == 0 {
                             prev_y = y;
                             line_num += 1;
                             (x_offset, y_offset) = calc_offsets(line_num);
                         }
-                        img.put_pixel(x + x_offset, y + y_offset, *pixel);
+                        if y_offset + subline_y >= img.height() {
+                            break;
+                        }
+                        img.put_pixel(x + x_offset, y_offset + subline_y, *pixel);
                     }
 
                     line_progress.inc_by(num_content_lines);
