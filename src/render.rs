@@ -238,7 +238,6 @@ pub(crate) mod function {
         );
 
         let ts = ThemeSet::load_defaults();
-        let mut prev_syntax = ss.find_syntax_plain_text() as *const _;
         let theme = ts.themes.get(theme).with_context(|| {
             format!(
                 "Could not find theme {theme:?}, must be one of {}",
@@ -255,8 +254,6 @@ pub(crate) mod function {
             let mut line_num: u32 = 0;
             let mut longest_line_chars = 0;
             let mut background = None;
-            let mut highlighter =
-                syntect::easy::HighlightLines::new(ss.find_syntax_plain_text(), theme);
             for ((path, content), num_content_lines) in content {
                 progress.inc();
                 if should_interrupt.load(Ordering::Relaxed) {
@@ -266,10 +263,7 @@ pub(crate) mod function {
                 let syntax = ss
                     .find_syntax_for_file(path)?
                     .unwrap_or_else(|| ss.find_syntax_plain_text());
-                if syntax as *const _ != prev_syntax {
-                    highlighter = syntect::easy::HighlightLines::new(syntax, theme);
-                    prev_syntax = syntax as *const _;
-                }
+                let mut highlighter = syntect::easy::HighlightLines::new(syntax, theme);
 
                 let out = chunk::process(
                     &content,
@@ -305,19 +299,12 @@ pub(crate) mod function {
                         let ttx = ttx.clone();
                         let ss = &ss;
                         move || -> anyhow::Result<()> {
-                            let mut prev_syntax = ss.find_syntax_plain_text() as *const _;
-                            let mut highlighter = syntect::easy::HighlightLines::new(
-                                ss.find_syntax_plain_text(),
-                                theme,
-                            );
                             for (path, content, num_content_lines, lines_so_far) in rx {
                                 let syntax = ss
                                     .find_syntax_for_file(path)?
                                     .unwrap_or_else(|| ss.find_syntax_plain_text());
-                                if syntax as *const _ != prev_syntax {
-                                    highlighter = syntect::easy::HighlightLines::new(syntax, theme);
-                                    prev_syntax = syntax as *const _;
-                                }
+                                let mut highlighter =
+                                    syntect::easy::HighlightLines::new(syntax, theme);
 
                                 let mut img = RgbImage::new(
                                     column_width,
