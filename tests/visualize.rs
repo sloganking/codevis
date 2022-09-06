@@ -19,6 +19,7 @@ fn various_renders() {
         column_width: 100,
         line_height: 1,
         target_aspect_ratio: 0.0,
+        plain: false,
         fg_color: code_visualizer::render::FgColor::Style,
         bg_color: code_visualizer::render::BgColor::Style,
         threads: 1,
@@ -39,6 +40,7 @@ fn various_renders() {
     opts.line_height = 2;
     opts.fg_color = code_visualizer::render::FgColor::StyleAsciiBrightness;
     opts.bg_color = code_visualizer::render::BgColor::HelixEditor;
+    opts.plain = true;
     opts.threads = 3;
     opts.target_aspect_ratio = 16.0 / 9.0;
 
@@ -76,6 +78,7 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
         column_width: 100,
         line_height: 1,
         target_aspect_ratio: 0.0,
+        plain: true,
         fg_color: code_visualizer::render::FgColor::Style,
         bg_color: code_visualizer::render::BgColor::Style,
         threads: 1,

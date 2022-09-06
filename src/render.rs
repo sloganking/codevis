@@ -43,6 +43,7 @@ pub struct Options<'a> {
 
     pub force_full_columns: bool,
     pub ignore_files_without_syntax: bool,
+    pub plain: bool,
 }
 
 pub(crate) mod function {
@@ -71,6 +72,7 @@ pub(crate) mod function {
             bg_color,
             theme,
             force_full_columns,
+            plain,
             ignore_files_without_syntax,
         }: Options,
     ) -> anyhow::Result<ImageBuffer<Rgb<u8>, MmapMut>> {
@@ -263,12 +265,14 @@ pub(crate) mod function {
                     bail!("Cancelled by user")
                 }
 
-                let syntax = ss
-                    .find_syntax_for_file(path)?
-                    .unwrap_or_else(|| ss.find_syntax_plain_text());
-                if syntax as *const _ != prev_syntax {
-                    highlighter = syntect::easy::HighlightLines::new(syntax, theme);
-                    prev_syntax = syntax as *const _;
+                if !plain {
+                    let syntax = ss
+                        .find_syntax_for_file(path)?
+                        .unwrap_or_else(|| ss.find_syntax_plain_text());
+                    if syntax as *const _ != prev_syntax {
+                        highlighter = syntect::easy::HighlightLines::new(syntax, theme);
+                        prev_syntax = syntax as *const _;
+                    }
                 }
 
                 let out = chunk::process(
@@ -311,12 +315,15 @@ pub(crate) mod function {
                                 theme,
                             );
                             for (path, content, num_content_lines, lines_so_far) in rx {
-                                let syntax = ss
-                                    .find_syntax_for_file(path)?
-                                    .unwrap_or_else(|| ss.find_syntax_plain_text());
-                                if syntax as *const _ != prev_syntax {
-                                    highlighter = syntect::easy::HighlightLines::new(syntax, theme);
-                                    prev_syntax = syntax as *const _;
+                                if !plain {
+                                    let syntax = ss
+                                        .find_syntax_for_file(path)?
+                                        .unwrap_or_else(|| ss.find_syntax_plain_text());
+                                    if syntax as *const _ != prev_syntax {
+                                        highlighter =
+                                            syntect::easy::HighlightLines::new(syntax, theme);
+                                        prev_syntax = syntax as *const _;
+                                    }
                                 }
 
                                 let mut img = RgbImage::new(

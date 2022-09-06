@@ -62,6 +62,7 @@ fn main() -> anyhow::Result<()> {
             target_aspect_ratio: args.aspect_width / args.aspect_height,
             threads: args.threads,
             force_full_columns: args.force_full_columns,
+            plain: args.plain,
             theme: &args.theme,
             fg_color: args.fg_pixel_color,
             bg_color: args.bg_pixel_color,
