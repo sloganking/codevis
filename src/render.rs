@@ -3,7 +3,6 @@ use bstr::ByteSlice;
 use image::{ImageBuffer, Pixel, Rgb};
 use memmap2::MmapMut;
 use prodash::Progress;
-use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use syntect::highlighting::{Style, ThemeSet};
@@ -49,18 +48,21 @@ pub fn render(
     let ss = SyntaxSet::load_defaults_newlines();
 
     //> read files (for /n counting)
-    let (total_line_count, ignored) = {
+    let (content, total_line_count, num_ignored) = {
+        let mut out = Vec::with_capacity(content.len());
         let mut lines = 0;
-        let mut ignored = BTreeSet::default();
+        let mut num_ignored = 0;
         for (path, content) in content {
             let content_lines = content.lines().count();
             lines += content_lines;
             if ignore_files_without_syntax && ss.find_syntax_for_file(path)?.is_none() {
                 lines -= content_lines;
-                ignored.insert(path);
+                num_ignored += 1;
+            } else {
+                out.push(((path, content), content_lines))
             }
         }
-        (lines as u32, ignored)
+        (out, lines as u32, num_ignored)
     };
 
     if total_line_count == 0 {
@@ -199,7 +201,7 @@ pub fn render(
     // render all lines onto image
     progress.set_name("overall");
     progress.init(
-        Some(content.len() - ignored.len()),
+        Some(content.len()),
         prodash::unit::label_and_mode("files", prodash::unit::display::Mode::with_percentage())
             .into(),
     );
@@ -231,10 +233,7 @@ pub fn render(
     })?;
     let mut highlighter = syntect::easy::HighlightLines::new(ss.find_syntax_plain_text(), theme);
 
-    for (path, content) in content {
-        if ignored.contains(path) {
-            continue;
-        }
+    for ((path, content), _content_lines) in content {
         progress.inc();
         if should_interrupt.load(Ordering::Relaxed) {
             bail!("Cancelled by user")
@@ -391,12 +390,56 @@ pub fn render(
         "Aspect ratio is {} off from target",
         (last_checked_aspect_ratio - target_aspect_ratio).abs(),
     ));
-    if !ignored.is_empty() {
-        progress.info(format!(
-            "Ignored {} files due to missing syntax",
-            ignored.len()
-        ))
+    if num_ignored != 0 {
+        progress.info(format!("Ignored {num_ignored} files due to missing syntax",))
     }
 
     Ok(imgbuf)
+}
+
+#[allow(dead_code)]
+mod chunk {
+    use std::path::Path;
+
+    /// Essentially a rectangle of pixels in memory, with an embedded offset to change the starting position
+    /// into the bigger picture.
+    pub struct Frame {
+        /// Layout: RGB = u8 * 3 = pixel, pixel * (0..width) = line, line * line_height * height = image
+        buf: Vec<u8>,
+
+        /// The amount of pixels per line in horizontal direction.
+        column_width: u32,
+        /// The amount of pixels per line
+        line_height: u32,
+        /// The amount of lines.
+        lines: u32,
+
+        /// Offset in pixels along with width, always a multiple of column-width.
+        x_ofs: u32,
+        /// The starting line of the column
+        y_ofs: u32,
+    }
+
+    /// The result of processing a chunk.
+    pub struct Outcome {
+        pub frame: Frame,
+        /// The longest line we encountered in unicode codepoints.
+        pub longest_line_in_chars: u32,
+    }
+
+    /// A piece of work to process
+    pub struct Work<'a> {
+        /// The path from which `content` was read
+        pub path: &'a Path,
+        /// The UTF-8 content at `path`
+        pub content: &'a str,
+        /// The starting position in x (in pixels) of the parent image
+        pub start_x_pos: u32,
+        /// The starting position in y (in lines) of the parent image, with line-height taken into account
+        pub start_y_pos: u32,
+    }
+
+    pub fn process(_work: Work) -> Outcome {
+        todo!()
+    }
 }
