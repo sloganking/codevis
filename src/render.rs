@@ -11,19 +11,37 @@ pub enum FgColor {
 }
 
 /// Determine the background pixel color.
-#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+#[derive(clap::ValueEnum, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BgColor {
     /// Use the style of the syntax to color the background pixel.
     Style,
+    /// Use the style of the syntax to color the background pixel and modulate it in an even-odd pattern
+    /// to make file borders visible.
+    StyleCheckerboardDarken,
+    /// Use the style of the syntax to color the background pixel and modulate it in an even-odd pattern
+    /// to make file borders visible.
+    StyleCheckerboardBrighten,
     /// The purple color of the Helix Editor.
     HelixEditor,
 }
 
 impl BgColor {
-    pub fn to_rgb(&self, style: Style) -> Rgb<u8> {
+    pub fn to_rgb(&self, style: Style, file_index: usize) -> Rgb<u8> {
         match self {
             BgColor::Style => Rgb([style.background.r, style.background.g, style.background.b]),
             BgColor::HelixEditor => Rgb([59, 34, 76]),
+            BgColor::StyleCheckerboardDarken | BgColor::StyleCheckerboardBrighten => {
+                let m = if self == &BgColor::StyleCheckerboardBrighten {
+                    (file_index % 2 == 0).then(|| 1.2).unwrap_or(1.0)
+                } else {
+                    (file_index % 2 == 0).then(|| 1.0).unwrap_or(0.8)
+                };
+                Rgb([
+                    (style.background.r as f32 * m) as u8,
+                    (style.background.g as f32 * m) as u8,
+                    (style.background.b as f32 * m) as u8,
+                ])
+            }
         }
     }
 }
@@ -262,7 +280,9 @@ pub(crate) mod function {
             let mut background = None;
             let mut highlighter =
                 syntect::easy::HighlightLines::new(ss.find_syntax_plain_text(), theme);
-            for ((path, content), num_content_lines) in content {
+            for (file_index, ((path, content), num_content_lines)) in
+                content.into_iter().enumerate()
+            {
                 progress.inc();
                 if should_interrupt.load(Ordering::Relaxed) {
                     bail!("Cancelled by user")
@@ -294,6 +314,7 @@ pub(crate) mod function {
                         lines_per_column,
                         fg_color,
                         bg_color,
+                        file_index,
                     },
                 )?;
                 longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
@@ -308,7 +329,7 @@ pub(crate) mod function {
             let mut longest_line_chars = 0;
             let mut background = None;
             std::thread::scope(|scope| -> anyhow::Result<()> {
-                let (tx, rx) = flume::bounded::<(_, String, _, _)>(content.len());
+                let (tx, rx) = flume::bounded::<(_, String, _, _, _)>(content.len());
                 let (ttx, trx) = flume::unbounded();
                 for tid in 1..threads {
                     scope.spawn({
@@ -322,7 +343,7 @@ pub(crate) mod function {
                                 ss.find_syntax_plain_text(),
                                 theme,
                             );
-                            for (path, content, num_content_lines, lines_so_far) in rx {
+                            for (path, content, num_content_lines, lines_so_far, file_index) in rx {
                                 if !plain {
                                     let syntax = ss
                                         .find_syntax_for_file(&path)?
@@ -354,6 +375,7 @@ pub(crate) mod function {
                                         lines_per_column: total_line_count,
                                         fg_color,
                                         bg_color,
+                                        file_index,
                                     },
                                 )?;
                                 ttx.send((img, out, num_content_lines, lines_so_far))?;
@@ -364,8 +386,10 @@ pub(crate) mod function {
                 }
                 drop((rx, ttx));
                 let mut lines_so_far = 0u32;
-                for ((path, content), num_content_lines) in content {
-                    tx.send((path, content, num_content_lines, lines_so_far))?;
+                for (file_index, ((path, content), num_content_lines)) in
+                    content.into_iter().enumerate()
+                {
+                    tx.send((path, content, num_content_lines, lines_so_far, file_index))?;
                     lines_so_far += num_content_lines as u32;
                 }
                 drop(tx);
@@ -453,6 +477,8 @@ mod chunk {
         pub fg_color: FgColor,
         pub bg_color: BgColor,
         pub highlight_truncated_lines: bool,
+
+        pub file_index: usize,
     }
 
     /// Return the `(x, y)` offsets to apply to the given line, to wrap columns of lines into the
@@ -482,6 +508,7 @@ mod chunk {
             lines_per_column,
             fg_color,
             bg_color,
+            file_index,
         }: Context,
     ) -> anyhow::Result<Outcome>
     where
@@ -515,7 +542,8 @@ mod chunk {
                 calc_offsets(actual_line, lines_per_column, column_width, line_height);
 
             let regions = highlight(line)?;
-            let background = background.get_or_insert_with(|| bg_color.to_rgb(regions[0].0));
+            let background =
+                background.get_or_insert_with(|| bg_color.to_rgb(regions[0].0, file_index));
             let mut cur_line_x = 0;
 
             for (style, region) in regions {
