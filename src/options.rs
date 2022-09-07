@@ -64,12 +64,16 @@ pub struct Args {
     pub theme: String,
 
     /// The way foreground pixels are colored.
-    #[clap(value_enum, long, default_value_t = code_visualizer::render::FgColor::StyleAsciiBrightness)]
+    #[clap(value_enum, long, default_value_t = code_visualizer::render::FgColor::StyleAsciiBrightness, help_heading = "COLORS")]
     pub fg_pixel_color: code_visualizer::render::FgColor,
 
     /// The way background pixels are colored.
-    #[clap(value_enum, long, default_value_t = code_visualizer::render::BgColor::Style)]
+    #[clap(value_enum, long, default_value_t = code_visualizer::render::BgColor::Style, help_heading = "COLORS")]
     pub bg_pixel_color: code_visualizer::render::BgColor,
+
+    /// The difference in brightness that certain background color styles may have at most.
+    #[clap(long, default_value_t = 0.2, help_heading = "COLORS")]
+    pub color_modulation: f32,
 
     /// Open the output image with the standard image viewer.
     #[clap(long, help_heading = "OUTPUT")]
