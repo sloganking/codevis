@@ -38,7 +38,7 @@ impl BgColor {
                 } else {
                     (file_index % 2 == 0)
                         .then(|| 1.0)
-                        .unwrap_or((1.0_f32 - color_modulation).max(0.0))
+                        .unwrap_or_else(|| (1.0_f32 - color_modulation).max(0.0))
                 };
                 Rgb([
                     (style.background.r as f32 * m).min(255.0) as u8,
