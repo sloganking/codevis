@@ -69,6 +69,7 @@ fn main() -> anyhow::Result<()> {
             theme: &args.theme,
             fg_color: args.fg_pixel_color,
             bg_color: args.bg_pixel_color,
+            color_modulation: args.color_modulation,
             ignore_files_without_syntax: args.ignore_files_without_syntax,
         },
     )?;

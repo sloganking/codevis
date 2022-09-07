@@ -26,20 +26,24 @@ pub enum BgColor {
 }
 
 impl BgColor {
-    pub fn to_rgb(&self, style: Style, file_index: usize) -> Rgb<u8> {
+    pub fn to_rgb(&self, style: Style, file_index: usize, color_modulation: f32) -> Rgb<u8> {
         match self {
             BgColor::Style => Rgb([style.background.r, style.background.g, style.background.b]),
             BgColor::HelixEditor => Rgb([59, 34, 76]),
             BgColor::StyleCheckerboardDarken | BgColor::StyleCheckerboardBrighten => {
                 let m = if self == &BgColor::StyleCheckerboardBrighten {
-                    (file_index % 2 == 0).then(|| 1.2).unwrap_or(1.0)
+                    (file_index % 2 == 0)
+                        .then(|| 1.0 + color_modulation)
+                        .unwrap_or(1.0)
                 } else {
-                    (file_index % 2 == 0).then(|| 1.0).unwrap_or(0.8)
+                    (file_index % 2 == 0)
+                        .then(|| 1.0)
+                        .unwrap_or((1.0_f32 - color_modulation).max(0.0))
                 };
                 Rgb([
-                    (style.background.r as f32 * m) as u8,
-                    (style.background.g as f32 * m) as u8,
-                    (style.background.b as f32 * m) as u8,
+                    (style.background.r as f32 * m).min(255.0) as u8,
+                    (style.background.g as f32 * m).min(255.0) as u8,
+                    (style.background.b as f32 * m).min(255.0) as u8,
                 ])
             }
         }
@@ -64,6 +68,7 @@ pub struct Options<'a> {
     pub ignore_files_without_syntax: bool,
     pub plain: bool,
     pub display_to_be_processed_file: bool,
+    pub color_modulation: f32,
 }
 
 pub(crate) mod function {
@@ -95,6 +100,7 @@ pub(crate) mod function {
             force_full_columns,
             plain,
             ignore_files_without_syntax,
+            color_modulation,
         }: Options,
     ) -> anyhow::Result<ImageBuffer<Rgb<u8>, MmapMut>> {
         // unused for now
@@ -315,6 +321,7 @@ pub(crate) mod function {
                         fg_color,
                         bg_color,
                         file_index,
+                        color_modulation,
                     },
                 )?;
                 longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
@@ -376,6 +383,7 @@ pub(crate) mod function {
                                         fg_color,
                                         bg_color,
                                         file_index,
+                                        color_modulation,
                                     },
                                 )?;
                                 ttx.send((img, out, num_content_lines, lines_so_far))?;
@@ -479,6 +487,7 @@ mod chunk {
         pub highlight_truncated_lines: bool,
 
         pub file_index: usize,
+        pub color_modulation: f32,
     }
 
     /// Return the `(x, y)` offsets to apply to the given line, to wrap columns of lines into the
@@ -509,6 +518,7 @@ mod chunk {
             fg_color,
             bg_color,
             file_index,
+            color_modulation,
         }: Context,
     ) -> anyhow::Result<Outcome>
     where
@@ -542,8 +552,8 @@ mod chunk {
                 calc_offsets(actual_line, lines_per_column, column_width, line_height);
 
             let regions = highlight(line)?;
-            let background =
-                background.get_or_insert_with(|| bg_color.to_rgb(regions[0].0, file_index));
+            let background = background
+                .get_or_insert_with(|| bg_color.to_rgb(regions[0].0, file_index, color_modulation));
             let mut cur_line_x = 0;
 
             for (style, region) in regions {

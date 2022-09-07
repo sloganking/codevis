@@ -24,6 +24,7 @@ fn various_renders() {
         display_to_be_processed_file: false,
         fg_color: code_visualizer::render::FgColor::Style,
         bg_color: code_visualizer::render::BgColor::Style,
+        color_modulation: 0.2,
         threads: 1,
         theme,
         force_full_columns: false,
@@ -88,6 +89,7 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
         bg_color: code_visualizer::render::BgColor::Style,
         threads: 1,
         theme,
+        color_modulation: 0.2,
         force_full_columns: false,
         ignore_files_without_syntax: true,
     };
