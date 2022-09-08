@@ -1,11 +1,11 @@
 use bstr::ByteSlice;
-use code_visualizer::render;
+use codevis::render;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 
 #[test]
 fn various_renders() {
-    let (paths, ignored) = code_visualizer::unicode_content(
+    let (paths, ignored) = codevis::unicode_content(
         Path::new("./src/"),
         &[],
         prodash::progress::Discard,
@@ -22,15 +22,15 @@ fn various_renders() {
         plain: false,
         highlight_truncated_lines: true,
         display_to_be_processed_file: false,
-        fg_color: code_visualizer::render::FgColor::Style,
-        bg_color: code_visualizer::render::BgColor::Style,
+        fg_color: codevis::render::FgColor::Style,
+        bg_color: codevis::render::BgColor::Style,
         color_modulation: 0.2,
         threads: 1,
         theme,
         force_full_columns: false,
         ignore_files_without_syntax: true,
     };
-    code_visualizer::render(
+    codevis::render(
         paths.clone(),
         prodash::progress::Discard,
         &AtomicBool::default(),
@@ -42,13 +42,13 @@ fn various_renders() {
     opts.ignore_files_without_syntax = false;
     opts.line_height = 2;
     opts.highlight_truncated_lines = false;
-    opts.fg_color = code_visualizer::render::FgColor::StyleAsciiBrightness;
-    opts.bg_color = code_visualizer::render::BgColor::HelixEditor;
+    opts.fg_color = codevis::render::FgColor::StyleAsciiBrightness;
+    opts.bg_color = codevis::render::BgColor::HelixEditor;
     opts.plain = true;
     opts.threads = 3;
     opts.target_aspect_ratio = 16.0 / 9.0;
 
-    code_visualizer::render(
+    codevis::render(
         paths.clone(),
         prodash::progress::Discard,
         &AtomicBool::default(),
@@ -57,7 +57,7 @@ fn various_renders() {
     .unwrap();
 
     opts.line_height = 2;
-    code_visualizer::render(
+    codevis::render(
         paths,
         prodash::progress::Discard,
         &AtomicBool::default(),
@@ -68,7 +68,7 @@ fn various_renders() {
 
 #[test]
 fn multi_threading_produces_same_result_as_single_threaded_mode() {
-    let (paths, ignored) = code_visualizer::unicode_content(
+    let (paths, ignored) = codevis::unicode_content(
         Path::new("./src/"),
         &[],
         prodash::progress::Discard,
@@ -85,15 +85,15 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
         highlight_truncated_lines: false,
         display_to_be_processed_file: true,
         plain: true,
-        fg_color: code_visualizer::render::FgColor::Style,
-        bg_color: code_visualizer::render::BgColor::Style,
+        fg_color: codevis::render::FgColor::Style,
+        bg_color: codevis::render::BgColor::Style,
         threads: 1,
         theme,
         color_modulation: 0.2,
         force_full_columns: false,
         ignore_files_without_syntax: true,
     };
-    let expected = code_visualizer::render(
+    let expected = codevis::render(
         paths.clone(),
         prodash::progress::Discard,
         &AtomicBool::default(),
@@ -102,7 +102,7 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
     .unwrap();
 
     opts.threads = 2;
-    let actual = code_visualizer::render(
+    let actual = codevis::render(
         paths.clone(),
         prodash::progress::Discard,
         &AtomicBool::default(),
