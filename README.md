@@ -16,4 +16,4 @@ This repo's render of [sloganking/My-Own-OS](https://github.com/sloganking/My-Ow
 
 To visualize all files in the current directory and subdirectories. Run `codevis -i ./`. This will store the visualization in a new file called `./output.png`. If you wish to generate an output file with a different name, You can use the `-o` flag like so `codevis -i ./ -o ./different_name.png`.
 
-For a list of more commands run `codevis --help`
+For a list of more commands run `codevis --help`.
