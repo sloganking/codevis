@@ -279,7 +279,10 @@ pub(crate) mod function {
             )
         })?;
 
-        let threads = (threads == 0).then(num_cpus::get).unwrap_or(threads);
+        let threads = (threads == 0)
+            .then(num_cpus::get)
+            .unwrap_or(threads)
+            .clamp(1, num_cpus::get());
         let (mut line_num, longest_line_chars, background) = if threads < 2 {
             let mut line_num: u32 = 0;
             let mut longest_line_chars = 0;
@@ -338,7 +341,7 @@ pub(crate) mod function {
             std::thread::scope(|scope| -> anyhow::Result<()> {
                 let (tx, rx) = flume::bounded::<(_, String, _, _, _)>(content.len());
                 let (ttx, trx) = flume::unbounded();
-                for tid in 1..threads {
+                for tid in 0..threads {
                     scope.spawn({
                         let rx = rx.clone();
                         let ttx = ttx.clone();
