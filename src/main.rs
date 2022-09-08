@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
         .auto_configure(prodash::render::line::StreamKind::Stderr),
     );
 
-    let (paths, ignored) = code_visualizer::unicode_content(
+    let (paths, ignored) = codevis::unicode_content(
         &args.input_dir,
         &args.ignore_extension,
         progress.add_child("search unicode files"),
@@ -53,11 +53,11 @@ fn main() -> anyhow::Result<()> {
     }
 
     let start = std::time::Instant::now();
-    let img = code_visualizer::render(
+    let img = codevis::render(
         paths,
         progress.add_child("render"),
         &should_interrupt,
-        code_visualizer::render::Options {
+        codevis::render::Options {
             column_width: args.column_width_pixels,
             line_height: args.line_height_pixels,
             target_aspect_ratio: args.aspect_width / args.aspect_height,

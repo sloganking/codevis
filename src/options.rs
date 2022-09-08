@@ -17,8 +17,8 @@ pub struct Args {
 
     /// The number of threads to use for rendering.
     ///
-    /// '0' is equivalent to using all logical cores, the default is to use all physical ones.
-    #[clap(long, short = 't', default_value_t = num_cpus::get_physical(), help_heading = "PERFORMANCE")]
+    /// '0' is equivalent to using all logical cores, this is also the default.
+    #[clap(long, short = 't', default_value_t = num_cpus::get(), help_heading = "PERFORMANCE")]
     pub threads: usize,
 
     /// If true, highlighting will be performed on lines truncated to the `--column-width-pixels`, which is faster
@@ -64,12 +64,12 @@ pub struct Args {
     pub theme: String,
 
     /// The way foreground pixels are colored.
-    #[clap(value_enum, long, default_value_t = code_visualizer::render::FgColor::StyleAsciiBrightness, help_heading = "COLORS")]
-    pub fg_pixel_color: code_visualizer::render::FgColor,
+    #[clap(value_enum, long, default_value_t = codevis::render::FgColor::StyleAsciiBrightness, help_heading = "COLORS")]
+    pub fg_pixel_color: codevis::render::FgColor,
 
     /// The way background pixels are colored.
-    #[clap(value_enum, long, default_value_t = code_visualizer::render::BgColor::Style, help_heading = "COLORS")]
-    pub bg_pixel_color: code_visualizer::render::BgColor,
+    #[clap(value_enum, long, default_value_t = codevis::render::BgColor::Style, help_heading = "COLORS")]
+    pub bg_pixel_color: codevis::render::BgColor,
 
     /// The difference in brightness that certain background color styles may have at most.
     #[clap(long, default_value_t = 0.2, help_heading = "COLORS")]
