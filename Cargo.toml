@@ -1,11 +1,13 @@
 [package]
-name = "code-visualizer"
+name = "codevis"
 version = "0.1.0"
 edition = "2021"
-publish = false
+description = "A tool for turning your code into one large image"
+license = "MIT"
+repository = "https://github.com/sloganking/codevis"
 
 [[bin]]
-name = "code-vis"
+name = "codevis"
 path = "src/main.rs"
 test = false
 doctest = false
