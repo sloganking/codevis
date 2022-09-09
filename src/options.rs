@@ -72,7 +72,7 @@ pub struct Args {
     pub bg_pixel_color: codevis::render::BgColor,
 
     /// The difference in brightness that certain background color styles may have at most.
-    #[clap(long, default_value_t = 0.2, help_heading = "COLORS")]
+    #[clap(long, default_value_t = 0.3, help_heading = "COLORS")]
     pub color_modulation: f32,
 
     /// Open the output image with the standard image viewer.
