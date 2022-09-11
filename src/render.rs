@@ -563,26 +563,7 @@ mod chunk {
             let array_storage;
 
             let regions: &[_] = if line.len() > 1024 * 16 {
-                array_storage = [(
-                    Style {
-                        foreground: Color {
-                            r: 200,
-                            g: 200,
-                            b: 200,
-                            a: u8::MAX,
-                        },
-                        background: background
-                            .map(|c| Color {
-                                r: c.0[0],
-                                g: c.0[1],
-                                b: c.0[2],
-                                a: u8::MAX,
-                            })
-                            .unwrap_or(Color::BLACK),
-                        font_style: Default::default(),
-                    },
-                    truncated_line,
-                )];
+                array_storage = [(default_bg_color(background), truncated_line)];
                 &array_storage
             } else {
                 storage = highlight(line)?;
@@ -672,5 +653,25 @@ mod chunk {
             longest_line_in_chars,
             background,
         })
+    }
+
+    fn default_bg_color(background: Option<Rgb<u8>>) -> Style {
+        Style {
+            foreground: Color {
+                r: 200,
+                g: 200,
+                b: 200,
+                a: u8::MAX,
+            },
+            background: background
+                .map(|c| Color {
+                    r: c.0[0],
+                    g: c.0[1],
+                    b: c.0[2],
+                    a: u8::MAX,
+                })
+                .unwrap_or(Color::BLACK),
+            font_style: Default::default(),
+        }
     }
 }
