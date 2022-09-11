@@ -468,7 +468,7 @@ mod chunk {
     use bstr::ByteSlice;
     use image::{ImageBuffer, Rgb};
     use std::ops::{Deref, DerefMut};
-    use syntect::highlighting::Style;
+    use syntect::highlighting::{Color, Style};
 
     /// The result of processing a chunk.
     pub struct Outcome {
@@ -529,9 +529,9 @@ mod chunk {
         C: DerefMut,
     {
         let mut longest_line_in_chars = 0;
-        let mut background = None;
+        let mut background = None::<Rgb<u8>>;
         for line in content.as_bytes().lines_with_terminator() {
-            let line = {
+            let (line, truncated_line) = {
                 let line = line.to_str().expect("UTF-8 was source");
                 let mut num_chars = 0;
                 let mut chars = line.chars();
@@ -545,16 +545,30 @@ mod chunk {
                     .sum();
                 num_chars += chars.count();
                 longest_line_in_chars = longest_line_in_chars.max(num_chars);
-                (highlight_truncated_lines && num_chars >= column_width as usize)
+                let possibly_truncated_line = (num_chars >= column_width as usize)
                     .then(|| &line[..bytes_till_char_limit])
-                    .unwrap_or(line)
+                    .unwrap_or(line);
+                (
+                    highlight_truncated_lines
+                        .then(|| possibly_truncated_line)
+                        .unwrap_or(line),
+                    possibly_truncated_line,
+                )
             };
 
             let actual_line = line_num % total_line_count;
             let (cur_column_x_offset, cur_y) =
                 calc_offsets(actual_line, lines_per_column, column_width, line_height);
+            let storage;
+            let array_storage;
 
-            let regions = highlight(line)?;
+            let regions: &[_] = if line.len() > 1024 * 16 {
+                array_storage = [(default_bg_color(background), truncated_line)];
+                &array_storage
+            } else {
+                storage = highlight(line)?;
+                &storage
+            };
             let background = background
                 .get_or_insert_with(|| bg_color.to_rgb(regions[0].0, file_index, color_modulation));
             let mut cur_line_x = 0;
@@ -639,5 +653,25 @@ mod chunk {
             longest_line_in_chars,
             background,
         })
+    }
+
+    fn default_bg_color(background: Option<Rgb<u8>>) -> Style {
+        Style {
+            foreground: Color {
+                r: 200,
+                g: 200,
+                b: 200,
+                a: u8::MAX,
+            },
+            background: background
+                .map(|c| Color {
+                    r: c.0[0],
+                    g: c.0[1],
+                    b: c.0[2],
+                    a: u8::MAX,
+                })
+                .unwrap_or(Color::BLACK),
+            font_style: Default::default(),
+        }
     }
 }
