@@ -1,6 +1,6 @@
 # codevis
 
-**codevis** takes all source code / UTF-8 encodable files in a folder and renders them to one image, syntax highlighting any file it knows how to. These images show the shape and size of files, but not the exact characters inside the files.
+**codevis** takes all source code / UTF-8 encodable files in a folder and renders them to one image, syntax highlighting any file it knows how to. These images show the shape and size of files, but not the exact characters inside the files. Looking for a video instead of an image? Check out this repo's sister project [codemov](https://github.com/sloganking/codemov)
 
 This repo's render of [sloganking/My-Own-OS](https://github.com/sloganking/My-Own-OS/tree/6e555c05ce46dcc13904eb41cc4b3ccde61032b5):
 
