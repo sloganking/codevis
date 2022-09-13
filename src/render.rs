@@ -64,7 +64,7 @@ pub struct Options<'a> {
     pub bg_color: BgColor,
     pub theme: &'a str,
 
-    pub force_full_columns: bool,
+    pub dont_force_full_columns: bool,
     pub ignore_files_without_syntax: bool,
     pub plain: bool,
     pub display_to_be_processed_file: bool,
@@ -97,12 +97,14 @@ pub(crate) mod function {
             highlight_truncated_lines,
             display_to_be_processed_file,
             theme,
-            force_full_columns,
+            dont_force_full_columns,
             plain,
             ignore_files_without_syntax,
             color_modulation,
         }: Options,
     ) -> anyhow::Result<ImageBuffer<Rgb<u8>, MmapMut>> {
+
+        let force_full_columns = !dont_force_full_columns;
         // unused for now
         // could be used to make a "rolling code" animation
         let start = std::time::Instant::now();
@@ -134,8 +136,10 @@ pub(crate) mod function {
             );
         }
 
+        
+        // determine number and height of columns closest to desired aspect ratio
         let (mut img, lines_per_column, required_columns) = {
-            //> determine image dimensions based on num of lines and constraints
+            // determine image dimensions based on num of lines and constraints
             let mut lines_per_column = 1;
             let mut last_checked_aspect_ratio: f64 = f64::MAX;
             let mut last_column_line_limit = lines_per_column;
@@ -143,26 +147,23 @@ pub(crate) mod function {
             let mut cur_aspect_ratio: f64 =
                 column_width as f64 * total_line_count as f64 / (lines_per_column as f64 * 2.0);
 
-            //<> determine maximum aspect ratios
+            // determine maximum aspect ratios
             let tallest_aspect_ratio = column_width as f64 / total_line_count as f64 * 2.0;
             let widest_aspect_ratio = total_line_count as f64 * column_width as f64 / 2.0;
-            //<
+            
 
             if target_aspect_ratio <= tallest_aspect_ratio {
-                //> use tallest possible aspect ratio
+                // use tallest possible aspect ratio
                 lines_per_column = total_line_count;
                 required_columns = 1;
-                //<
             } else if target_aspect_ratio >= widest_aspect_ratio {
-                //> use widest possible aspect ratio
+                // use widest possible aspect ratio
                 lines_per_column = 1;
                 required_columns = total_line_count;
-                //<
             } else {
-                //> start at widest possible aspect ratio
+                // start at widest possible aspect ratio
                 lines_per_column = 1;
                 // required_columns = line_count;
-                //<
 
                 // de-widen aspect ratio until closest match is found
                 while (last_checked_aspect_ratio - target_aspect_ratio).abs()
