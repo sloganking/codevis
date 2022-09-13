@@ -27,7 +27,7 @@ fn various_renders() {
         color_modulation: 0.2,
         threads: 1,
         theme,
-        force_full_columns: false,
+        dont_force_full_columns: true,
         ignore_files_without_syntax: true,
     };
     codevis::render(
@@ -38,7 +38,7 @@ fn various_renders() {
     )
     .unwrap();
 
-    opts.force_full_columns = true;
+    opts.dont_force_full_columns = false;
     opts.ignore_files_without_syntax = false;
     opts.line_height = 2;
     opts.highlight_truncated_lines = false;
@@ -90,7 +90,7 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
         threads: 1,
         theme,
         color_modulation: 0.2,
-        force_full_columns: false,
+        dont_force_full_columns: true,
         ignore_files_without_syntax: true,
     };
     let expected = codevis::render(
