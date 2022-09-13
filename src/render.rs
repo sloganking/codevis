@@ -103,7 +103,6 @@ pub(crate) mod function {
             color_modulation,
         }: Options,
     ) -> anyhow::Result<ImageBuffer<Rgb<u8>, MmapMut>> {
-
         let force_full_columns = !dont_force_full_columns;
         // unused for now
         // could be used to make a "rolling code" animation
@@ -136,7 +135,6 @@ pub(crate) mod function {
             );
         }
 
-        
         // determine number and height of columns closest to desired aspect ratio
         let (mut img, lines_per_column, required_columns) = {
             // determine image dimensions based on num of lines and constraints
@@ -150,7 +148,6 @@ pub(crate) mod function {
             // determine maximum aspect ratios
             let tallest_aspect_ratio = column_width as f64 / total_line_count as f64 * 2.0;
             let widest_aspect_ratio = total_line_count as f64 * column_width as f64 / 2.0;
-            
 
             if target_aspect_ratio <= tallest_aspect_ratio {
                 // use tallest possible aspect ratio
