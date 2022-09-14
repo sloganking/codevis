@@ -2,6 +2,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 #[derive(Debug, clap::Parser)]
+#[clap(version)]
 pub struct Args {
     /// The directory to read UTF-8 encoded text files from.
     #[clap(long, short = 'i', default_value = "input", help_heading = "INPUT")]
