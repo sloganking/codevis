@@ -83,6 +83,129 @@ pub(crate) mod function {
     use syntect::highlighting::ThemeSet;
     use syntect::parsing::SyntaxSet;
 
+    /// determine number and height of columns closest to desired aspect ratio
+    fn determine_dimensions(
+        target_aspect_ratio: f64,
+        column_width: u32,
+        total_line_count: u32,
+        line_height: u32,
+        force_full_columns: bool,
+        mut progress: impl prodash::Progress,
+    ) -> anyhow::Result<(ImageBuffer<Rgb<u8>, MmapMut>, u32, u32)> {
+        // determine image dimensions based on num of lines and constraints
+        let mut lines_per_column = 1;
+        let mut last_checked_aspect_ratio: f64 = f64::MAX;
+        let mut last_column_line_limit = lines_per_column;
+        let mut required_columns;
+        let mut cur_aspect_ratio: f64 =
+            column_width as f64 * total_line_count as f64 / (lines_per_column as f64 * 2.0);
+
+        // determine maximum aspect ratios
+        let tallest_aspect_ratio = column_width as f64 / total_line_count as f64 * 2.0;
+        let widest_aspect_ratio = total_line_count as f64 * column_width as f64 / 2.0;
+
+        if target_aspect_ratio <= tallest_aspect_ratio {
+            // use tallest possible aspect ratio
+            lines_per_column = total_line_count;
+            required_columns = 1;
+        } else if target_aspect_ratio >= widest_aspect_ratio {
+            // use widest possible aspect ratio
+            lines_per_column = 1;
+            required_columns = total_line_count;
+        } else {
+            // start at widest possible aspect ratio
+            lines_per_column = 1;
+            // required_columns = line_count;
+
+            // de-widen aspect ratio until closest match is found
+            while (last_checked_aspect_ratio - target_aspect_ratio).abs()
+                > (cur_aspect_ratio - target_aspect_ratio).abs()
+            {
+                // remember current aspect ratio
+                last_checked_aspect_ratio = cur_aspect_ratio;
+
+                if force_full_columns {
+                    last_column_line_limit = lines_per_column;
+
+                    //> determine required number of columns
+                    required_columns = total_line_count / lines_per_column;
+                    if total_line_count % lines_per_column != 0 {
+                        required_columns += 1;
+                    }
+                    //<
+
+                    let last_required_columns = required_columns;
+
+                    // find next full column aspect ratio
+                    while required_columns == last_required_columns {
+                        lines_per_column += 1;
+
+                        //> determine required number of columns
+                        required_columns = total_line_count / lines_per_column;
+                        if total_line_count % lines_per_column != 0 {
+                            required_columns += 1;
+                        }
+                        //<
+                    }
+                } else {
+                    //> generate new aspect ratio
+                    lines_per_column += 1;
+
+                    //> determine required number of columns
+                    required_columns = total_line_count / lines_per_column;
+                    if total_line_count % lines_per_column != 0 {
+                        required_columns += 1;
+                    }
+                    //<
+                    //<
+                }
+
+                cur_aspect_ratio = required_columns as f64 * column_width as f64
+                    / (lines_per_column as f64 * line_height as f64);
+            }
+
+            //> re-determine best aspect ratio
+
+            // (Should never not happen, but)
+            // previous while loop would never have been entered if (column_line_limit == 1)
+            // so (column_line_limit -= 1;) would be unnecessary
+            if lines_per_column != 1 && !force_full_columns {
+                // revert to last aspect ratio
+                lines_per_column -= 1;
+            } else if force_full_columns {
+                lines_per_column = last_column_line_limit;
+            }
+
+            //> determine required number of columns
+            required_columns = total_line_count / lines_per_column;
+            if total_line_count % lines_per_column != 0 {
+                required_columns += 1;
+            }
+        }
+
+        let imgx: u32 = required_columns * column_width;
+        let imgy: u32 = total_line_count.min(lines_per_column) * line_height;
+        let channel_count = Rgb::<u8>::CHANNEL_COUNT;
+        let num_pixels = imgx as usize * imgy as usize * channel_count as usize;
+        progress.info(format!(
+            "Image dimensions: {imgx} x {imgy} x {channel_count} ({} in virtual memory)",
+            bytesize::ByteSize(num_pixels as u64)
+        ));
+
+        let img = ImageBuffer::<Rgb<u8>, _>::from_raw(
+            imgx,
+            imgy,
+            memmap2::MmapMut::map_anon(num_pixels)?,
+        )
+        .expect("correct size computation above");
+
+        progress.info(format!(
+            "Aspect ratio is {} off from target",
+            (last_checked_aspect_ratio - target_aspect_ratio).abs(),
+        ));
+        Ok((img, lines_per_column, required_columns))
+    }
+
     pub fn render(
         content: Vec<(PathBuf, String)>,
         mut progress: impl prodash::Progress,
@@ -135,120 +258,14 @@ pub(crate) mod function {
         }
 
         // determine number and height of columns closest to desired aspect ratio
-        let (mut img, lines_per_column, required_columns) = {
-            // determine image dimensions based on num of lines and constraints
-            let mut lines_per_column = 1;
-            let mut last_checked_aspect_ratio: f64 = f64::MAX;
-            let mut last_column_line_limit = lines_per_column;
-            let mut required_columns;
-            let mut cur_aspect_ratio: f64 =
-                column_width as f64 * total_line_count as f64 / (lines_per_column as f64 * 2.0);
-
-            // determine maximum aspect ratios
-            let tallest_aspect_ratio = column_width as f64 / total_line_count as f64 * 2.0;
-            let widest_aspect_ratio = total_line_count as f64 * column_width as f64 / 2.0;
-
-            if target_aspect_ratio <= tallest_aspect_ratio {
-                // use tallest possible aspect ratio
-                lines_per_column = total_line_count;
-                required_columns = 1;
-            } else if target_aspect_ratio >= widest_aspect_ratio {
-                // use widest possible aspect ratio
-                lines_per_column = 1;
-                required_columns = total_line_count;
-            } else {
-                // start at widest possible aspect ratio
-                lines_per_column = 1;
-                // required_columns = line_count;
-
-                // de-widen aspect ratio until closest match is found
-                while (last_checked_aspect_ratio - target_aspect_ratio).abs()
-                    > (cur_aspect_ratio - target_aspect_ratio).abs()
-                {
-                    // remember current aspect ratio
-                    last_checked_aspect_ratio = cur_aspect_ratio;
-
-                    if force_full_columns {
-                        last_column_line_limit = lines_per_column;
-
-                        //> determine required number of columns
-                        required_columns = total_line_count / lines_per_column;
-                        if total_line_count % lines_per_column != 0 {
-                            required_columns += 1;
-                        }
-                        //<
-
-                        let last_required_columns = required_columns;
-
-                        // find next full column aspect ratio
-                        while required_columns == last_required_columns {
-                            lines_per_column += 1;
-
-                            //> determine required number of columns
-                            required_columns = total_line_count / lines_per_column;
-                            if total_line_count % lines_per_column != 0 {
-                                required_columns += 1;
-                            }
-                            //<
-                        }
-                    } else {
-                        //> generate new aspect ratio
-                        lines_per_column += 1;
-
-                        //> determine required number of columns
-                        required_columns = total_line_count / lines_per_column;
-                        if total_line_count % lines_per_column != 0 {
-                            required_columns += 1;
-                        }
-                        //<
-                        //<
-                    }
-
-                    cur_aspect_ratio = required_columns as f64 * column_width as f64
-                        / (lines_per_column as f64 * line_height as f64);
-                }
-
-                //> re-determine best aspect ratio
-
-                // (Should never not happen, but)
-                // previous while loop would never have been entered if (column_line_limit == 1)
-                // so (column_line_limit -= 1;) would be unnecessary
-                if lines_per_column != 1 && !force_full_columns {
-                    // revert to last aspect ratio
-                    lines_per_column -= 1;
-                } else if force_full_columns {
-                    lines_per_column = last_column_line_limit;
-                }
-
-                //> determine required number of columns
-                required_columns = total_line_count / lines_per_column;
-                if total_line_count % lines_per_column != 0 {
-                    required_columns += 1;
-                }
-            }
-
-            let imgx: u32 = required_columns * column_width;
-            let imgy: u32 = total_line_count.min(lines_per_column) * line_height;
-            let channel_count = Rgb::<u8>::CHANNEL_COUNT;
-            let num_pixels = imgx as usize * imgy as usize * channel_count as usize;
-            progress.info(format!(
-                "Image dimensions: {imgx} x {imgy} x {channel_count} ({} in virtual memory)",
-                bytesize::ByteSize(num_pixels as u64)
-            ));
-
-            let img = ImageBuffer::<Rgb<u8>, _>::from_raw(
-                imgx,
-                imgy,
-                memmap2::MmapMut::map_anon(num_pixels)?,
-            )
-            .expect("correct size computation above");
-
-            progress.info(format!(
-                "Aspect ratio is {} off from target",
-                (last_checked_aspect_ratio - target_aspect_ratio).abs(),
-            ));
-            (img, lines_per_column, required_columns)
-        };
+        let (mut img, lines_per_column, required_columns) = determine_dimensions(
+            target_aspect_ratio,
+            column_width,
+            total_line_count,
+            line_height,
+            force_full_columns,
+            progress.add_child("determine_dimensions"),
+        )?;
 
         progress.set_name("process");
         progress.init(
