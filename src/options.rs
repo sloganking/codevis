@@ -38,7 +38,8 @@ pub struct Args {
     #[clap(long, help_heading = "MONITORING")]
     pub display_to_be_processed_file: bool,
 
-    /// Assure columns are never empty and continuously filled.
+    /// Allow the last column to be partially empty, with the tradeoff
+    /// of the output image being closer to desired aspect ratio.
     #[clap(long, help_heading = "IMAGE")]
     pub dont_force_full_columns: bool,
 
