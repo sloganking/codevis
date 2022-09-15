@@ -264,7 +264,7 @@ pub(crate) mod function {
             total_line_count,
             line_height,
             force_full_columns,
-            progress.add_child("determine_dimensions"),
+            progress.add_child("determine dimensions"),
         )?;
 
         progress.set_name("process");
@@ -349,6 +349,14 @@ pub(crate) mod function {
 
             (line_num, longest_line_chars, background)
         } else {
+            // multi-threaded rendering overview:
+            //
+            // Spawns threadpool and each file to be renered is sent to a thread as a message via a flume channel.
+            // Upon recieving a message, a thread renders the entire file to an image of one column width.
+            // and then returns that image to this main thread via a flume channel, to be stitched together
+            // into one large image. The ordering of files rendered in the final image is remembered and
+            // independant of thread rendering order.
+
             let mut line_num: u32 = 0;
             let mut longest_line_chars = 0;
             let mut background = None;
@@ -379,10 +387,12 @@ pub(crate) mod function {
                                     }
                                 }
 
+                                // create an image that fits one column
                                 let mut img = RgbImage::new(
                                     column_width,
                                     num_content_lines as u32 * line_height,
                                 );
+
                                 if display_to_be_processed_file {
                                     progress.info(format!("{path:?}"))
                                 }
@@ -418,6 +428,8 @@ pub(crate) mod function {
                     lines_so_far += num_content_lines as u32;
                 }
                 drop(tx);
+
+                // for each file image that was rendered by a thread.
                 for (sub_img, out, num_content_lines, lines_so_far) in trx {
                     longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
                     background = out.background;
@@ -427,6 +439,8 @@ pub(crate) mod function {
                         calc_offsets(actual_line, lines_per_column, column_width, line_height)
                     };
 
+                    // transfer pixels from sub_img to img. Where sub_img is a 1 column wide
+                    // image of one file. And img is our multi-column wide final output image.
                     for line in 0..num_content_lines as u32 {
                         let (x_offset, line_y) = calc_offsets(lines_so_far + line);
                         for x in 0..column_width {
