@@ -850,9 +850,9 @@ dependencies = [
 
 [[package]]
 name = "prodash"
-version = "20.0.0"
+version = "20.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65ae8c4c227abf4616b5819a60cf72b34c5c2541581f916c174ec2b2c1566da0"
+checksum = "a2624b8166da7f18a09dea2f7ad88991f2a55f4b021d04ea3338a6622045e897"
 dependencies = [
  "atty",
  "bytesize",
