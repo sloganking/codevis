@@ -63,7 +63,7 @@ fn main() -> anyhow::Result<()> {
             target_aspect_ratio: args.aspect_width / args.aspect_height,
             threads: args.threads,
             highlight_truncated_lines: args.highlight_truncated_lines,
-            dont_force_full_columns: args.dont_force_full_columns,
+            force_full_columns: !args.dont_force_full_columns,
             plain: args.force_plain_syntax,
             display_to_be_processed_file: args.display_to_be_processed_file,
             theme: &args.theme,

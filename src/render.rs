@@ -64,7 +64,7 @@ pub struct Options<'a> {
     pub bg_color: BgColor,
     pub theme: &'a str,
 
-    pub dont_force_full_columns: bool,
+    pub force_full_columns: bool,
     pub ignore_files_without_syntax: bool,
     pub plain: bool,
     pub display_to_be_processed_file: bool,
@@ -97,13 +97,12 @@ pub(crate) mod function {
             highlight_truncated_lines,
             display_to_be_processed_file,
             theme,
-            dont_force_full_columns,
+            force_full_columns,
             plain,
             ignore_files_without_syntax,
             color_modulation,
         }: Options,
     ) -> anyhow::Result<ImageBuffer<Rgb<u8>, MmapMut>> {
-        let force_full_columns = !dont_force_full_columns;
         // unused for now
         // could be used to make a "rolling code" animation
         let start = std::time::Instant::now();
