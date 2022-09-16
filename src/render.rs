@@ -127,12 +127,11 @@ pub(crate) mod function {
                 if force_full_columns {
                     last_column_line_limit = lines_per_column;
 
-                    //> determine required number of columns
+                    // determine required number of columns
                     required_columns = total_line_count / lines_per_column;
                     if total_line_count % lines_per_column != 0 {
                         required_columns += 1;
                     }
-                    //<
 
                     let last_required_columns = required_columns;
 
@@ -140,24 +139,22 @@ pub(crate) mod function {
                     while required_columns == last_required_columns {
                         lines_per_column += 1;
 
-                        //> determine required number of columns
+                        // determine required number of columns
                         required_columns = total_line_count / lines_per_column;
                         if total_line_count % lines_per_column != 0 {
                             required_columns += 1;
                         }
-                        //<
                     }
                 } else {
-                    //> generate new aspect ratio
+                    // generate new aspect ratio
+
                     lines_per_column += 1;
 
-                    //> determine required number of columns
+                    // determine required number of columns
                     required_columns = total_line_count / lines_per_column;
                     if total_line_count % lines_per_column != 0 {
                         required_columns += 1;
                     }
-                    //<
-                    //<
                 }
 
                 cur_aspect_ratio = required_columns as f64 * column_width as f64
@@ -176,7 +173,7 @@ pub(crate) mod function {
                 lines_per_column = last_column_line_limit;
             }
 
-            //> determine required number of columns
+            // determine required number of columns
             required_columns = total_line_count / lines_per_column;
             if total_line_count % lines_per_column != 0 {
                 required_columns += 1;
@@ -463,7 +460,7 @@ pub(crate) mod function {
             (line_num, longest_line_chars, background)
         };
 
-        //> fill in any empty bottom right corner, with background color
+        // fill in any empty bottom right corner, with background color
         while line_num < lines_per_column * required_columns {
             let (cur_column_x_offset, cur_y) =
                 calc_offsets(line_num, lines_per_column, column_width, line_height);
