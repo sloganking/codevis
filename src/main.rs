@@ -1,14 +1,15 @@
 use anyhow::Context;
 use image::{ImageBuffer, Rgb};
 use memmap2::MmapMut;
-use std::path::PathBuf;
+use std::borrow::Cow;
+use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 mod options;
 
 fn main() -> anyhow::Result<()> {
-    let args: options::Args = clap::Parser::parse();
+    let mut args: options::Args = clap::Parser::parse();
 
     let should_interrupt = Arc::new(AtomicBool::new(false));
     let _ = signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&should_interrupt));
@@ -53,43 +54,61 @@ fn main() -> anyhow::Result<()> {
     }
 
     let start = std::time::Instant::now();
-    let img = codevis::render(
-        paths,
-        progress.add_child("render"),
-        &should_interrupt,
-        codevis::render::Options {
-            column_width: args.column_width_pixels,
-            line_height: args.line_height_pixels,
-            target_aspect_ratio: args.aspect_width / args.aspect_height,
-            threads: args.threads,
-            highlight_truncated_lines: args.highlight_truncated_lines,
-            force_full_columns: !args.dont_force_full_columns,
-            plain: args.force_plain_syntax,
-            display_to_be_processed_file: args.display_to_be_processed_file,
-            themes: &args.theme,
-            fg_color: args.fg_pixel_color,
-            bg_color: args.bg_pixel_color,
-            color_modulation: args.color_modulation,
-            ignore_files_without_syntax: args.ignore_files_without_syntax,
-        },
-    )?;
-
-    let img_path = &args.output_path;
-    sage_image(img, img_path, progress.add_child("saving"))?;
-
-    if args.open {
-        progress
-            .add_child("opening")
-            .info(img_path.display().to_string());
-        open::that(img_path)?;
+    if args.theme.is_empty() {
+        args.theme.push("Solarized (dark)".into());
     }
-    progress.add_child("operation").done(format!(
-        "done in {:.02}s",
-        std::time::Instant::now()
-            .checked_duration_since(start)
-            .unwrap_or_default()
-            .as_secs_f32()
-    ));
+    for (theme_idx, theme) in args.theme.iter().enumerate() {
+        let img = codevis::render(
+            &paths,
+            progress.add_child("render"),
+            &should_interrupt,
+            codevis::render::Options {
+                column_width: args.column_width_pixels,
+                line_height: args.line_height_pixels,
+                target_aspect_ratio: args.aspect_width / args.aspect_height,
+                threads: args.threads,
+                highlight_truncated_lines: args.highlight_truncated_lines,
+                force_full_columns: !args.dont_force_full_columns,
+                plain: args.force_plain_syntax,
+                display_to_be_processed_file: args.display_to_be_processed_file,
+                theme,
+                fg_color: args.fg_pixel_color,
+                bg_color: args.bg_pixel_color,
+                color_modulation: args.color_modulation,
+                ignore_files_without_syntax: args.ignore_files_without_syntax,
+            },
+        )?;
+        let is_first = theme_idx == 0;
+        let img_path = if is_first {
+            Cow::Borrowed(&args.output_path)
+        } else {
+            let mut extension = theme.replace("(", "").replace(")", "").replace(" ", "-");
+            extension.push('.');
+            extension.push_str(
+                args.output_path
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .context("Output paths needs an extension")?,
+            );
+            let theme_specific_path = args.output_path.with_extension(extension);
+            Cow::Owned(theme_specific_path)
+        };
+        sage_image(img, img_path.as_ref(), progress.add_child("saving"))?;
+
+        if args.open {
+            progress
+                .add_child("opening")
+                .info(img_path.display().to_string());
+            open::that(img_path.as_ref())?;
+        }
+        progress.add_child("operation").done(format!(
+            "done in {:.02}s",
+            std::time::Instant::now()
+                .checked_duration_since(start)
+                .unwrap_or_default()
+                .as_secs_f32()
+        ));
+    }
 
     render_progress.shutdown_and_wait();
     Ok(())
@@ -97,7 +116,7 @@ fn main() -> anyhow::Result<()> {
 
 fn sage_image(
     img: ImageBuffer<Rgb<u8>, MmapMut>,
-    img_path: &PathBuf,
+    img_path: &Path,
     mut progress: impl prodash::Progress,
 ) -> anyhow::Result<()> {
     let start = std::time::Instant::now();

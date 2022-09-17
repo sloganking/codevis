@@ -62,7 +62,7 @@ pub struct Options<'a> {
 
     pub fg_color: FgColor,
     pub bg_color: BgColor,
-    pub themes: &'a [String],
+    pub theme: &'a str,
 
     pub force_full_columns: bool,
     pub ignore_files_without_syntax: bool,

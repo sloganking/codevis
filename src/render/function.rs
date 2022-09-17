@@ -7,13 +7,13 @@ use image::{ImageBuffer, Pixel, Rgb, RgbImage};
 use memmap2::MmapMut;
 use prodash::Progress;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
 
 pub fn render(
-    content: Vec<(PathBuf, String)>,
-    mut progress: impl prodash::Progress,
+    content: &[(PathBuf, String)],
+    mut progress: impl Progress,
     should_interrupt: &AtomicBool,
     Options {
         column_width,
@@ -24,7 +24,7 @@ pub fn render(
         bg_color,
         highlight_truncated_lines,
         display_to_be_processed_file,
-        themes,
+        theme,
         force_full_columns,
         plain,
         ignore_files_without_syntax,
@@ -42,6 +42,7 @@ pub fn render(
         let mut out = Vec::with_capacity(content.len());
         let mut lines = 0;
         let mut num_ignored = 0;
+        let mut lines_so_far = 0u32;
         for (path, content) in content {
             let num_content_lines = content.lines().count();
             lines += num_content_lines;
@@ -49,7 +50,8 @@ pub fn render(
                 lines -= num_content_lines;
                 num_ignored += 1;
             } else {
-                out.push(((path, content), num_content_lines))
+                out.push(((path, content), num_content_lines, lines_so_far));
+                lines_so_far += num_content_lines as u32;
             }
         }
         (out, lines as u32, num_ignored)
@@ -77,20 +79,18 @@ pub fn render(
         progress.add_child("determine dimensions"),
     )?;
 
-    let theme_count = themes.len().max(1);
     let num_pixels = {
         let channel_count = Rgb::<u8>::CHANNEL_COUNT;
         let num_pixels = imgx as usize * imgy as usize * channel_count as usize;
         progress.info(format!(
-            "Image dimensions: {imgx} x {imgy} x {channel_count} x {theme_count} [x * y * channels * themes] ({} in virtual memory)",
-            bytesize::ByteSize(num_pixels as u64 * theme_count as u64),
+            "Image dimensions: {imgx} x {imgy} x {channel_count} [x * y * channels] ({} in virtual memory)",
+            bytesize::ByteSize(num_pixels as u64 ),
         ));
         num_pixels
     };
 
-    let mut img =
-        ImageBuffer::<Rgb<u8>, _>::from_raw(imgx, imgy, memmap2::MmapMut::map_anon(num_pixels)?)
-            .expect("correct size computation above");
+    let mut img = ImageBuffer::<Rgb<u8>, _>::from_raw(imgx, imgy, MmapMut::map_anon(num_pixels)?)
+        .expect("correct size computation above");
 
     progress.set_name("process");
     progress.init(
@@ -100,38 +100,25 @@ pub fn render(
     );
     let mut line_progress = progress.add_child("render");
     line_progress.init(
-        Some(total_line_count as usize * theme_count),
+        Some(total_line_count as usize),
         prodash::unit::label_and_mode("lines", prodash::unit::display::Mode::with_throughput())
             .into(),
     );
 
     let ts = ThemeSet::load_defaults();
-    let mut states: Vec<_> = if themes.is_empty() {
-        vec![Cache::new_with_plain_highlighter(
-            &ss,
-            ts.themes.get("Solarized (dark)").expect("built-in"),
-        )]
-    } else {
-        themes
-            .iter()
-            .map(|theme| {
+    let mut cache = Cache::new_with_plain_highlighter(
+        &ss,
+        ts.themes.get(theme).with_context(|| {
+            format!(
+                "Could not find theme {theme:?}, must be one of {}",
                 ts.themes
-                    .get(theme)
-                    .with_context(|| {
-                        format!(
-                            "Could not find theme {theme:?}, must be one of {}",
-                            ts.themes
-                                .keys()
-                                .map(|s| format!("{s:?}"))
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        )
-                    })
-                    .map(|theme| Cache::new_with_plain_highlighter(&ss, theme))
-            })
-            .collect::<Result<_, _>>()?
-    };
-    let state = &mut states[0];
+                    .keys()
+                    .map(|s| format!("{s:?}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })?,
+    );
 
     let threads = (threads == 0)
         .then(num_cpus::get)
@@ -141,14 +128,16 @@ pub fn render(
         let mut line_num: u32 = 0;
         let mut longest_line_chars = 0;
         let mut background = None;
-        let mut highlighter = state.new_plain_highlighter();
-        for (file_index, ((path, content), num_content_lines)) in content.into_iter().enumerate() {
+        let mut highlighter = cache.new_plain_highlighter();
+        for (file_index, ((path, content), num_content_lines, _lines_so_far)) in
+            content.into_iter().enumerate()
+        {
             progress.inc();
             if should_interrupt.load(Ordering::Relaxed) {
                 bail!("Cancelled by user")
             }
             if !plain {
-                if let Some(hl) = state.highlighter_for_file_name(&path)? {
+                if let Some(hl) = cache.highlighter_for_file_name(&path)? {
                     highlighter = hl;
                 }
             }
@@ -192,19 +181,26 @@ pub fn render(
         let mut line_num: u32 = 0;
         let mut longest_line_chars = 0;
         let mut background = None;
+        let file_index = AtomicUsize::default();
         std::thread::scope(|scope| -> anyhow::Result<()> {
-            let (tx, rx) = flume::bounded::<(PathBuf, String, _, _, _)>(content.len());
             let (ttx, trx) = flume::unbounded();
             for tid in 0..threads {
                 scope.spawn({
-                    let rx = rx.clone();
                     let ttx = ttx.clone();
+                    let file_index = &file_index;
                     let ss = &ss;
-                    let mut state = state.clone();
+                    let content = &content;
+                    let mut state = cache.clone();
                     let mut progress = line_progress.add_child(format!("Thread {tid}"));
                     move || -> anyhow::Result<()> {
                         let mut highlighter = state.new_plain_highlighter();
-                        for (path, content, num_content_lines, lines_so_far, file_index) in rx {
+                        while let Ok(file_index) =
+                            file_index.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| {
+                                (x < content.len()).then(|| x + 1)
+                            })
+                        {
+                            let ((path, content), num_content_lines, lines_so_far) =
+                                &content[file_index];
                             if !plain {
                                 if let Some(hl) = state.highlighter_for_file_name(&path)? {
                                     highlighter = hl;
@@ -212,8 +208,10 @@ pub fn render(
                             }
 
                             // create an image that fits one column
-                            let mut img =
-                                RgbImage::new(column_width, num_content_lines as u32 * line_height);
+                            let mut img = RgbImage::new(
+                                column_width,
+                                *num_content_lines as u32 * line_height,
+                            );
 
                             if display_to_be_processed_file {
                                 progress.info(format!("{path:?}"))
@@ -235,21 +233,13 @@ pub fn render(
                                     color_modulation,
                                 },
                             )?;
-                            ttx.send((img, out, num_content_lines, lines_so_far))?;
+                            ttx.send((img, out, *num_content_lines, *lines_so_far))?;
                         }
                         Ok(())
                     }
                 });
             }
-            drop((rx, ttx));
-            let mut lines_so_far = 0u32;
-            for (file_index, ((path, content), num_content_lines)) in
-                content.into_iter().enumerate()
-            {
-                tx.send((path, content, num_content_lines, lines_so_far, file_index))?;
-                lines_so_far += num_content_lines as u32;
-            }
-            drop(tx);
+            drop(ttx);
 
             // for each file image that was rendered by a thread.
             for (sub_img, out, num_content_lines, lines_so_far) in trx {
