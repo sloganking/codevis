@@ -67,6 +67,15 @@ pub struct Args {
     #[clap(long, help_heading = "COLORS")]
     pub theme: Vec<String>,
 
+    /// Render the input with all available themes, one after another.
+    #[clap(
+        long,
+        help_heading = "COLORS",
+        conflicts_with("theme"),
+        conflicts_with("force-plain-syntax")
+    )]
+    pub all_themes: bool,
+
     /// The way foreground pixels are colored.
     #[clap(value_enum, long, default_value_t = codevis::render::FgColor::StyleAsciiBrightness, help_heading = "COLORS")]
     pub fg_pixel_color: codevis::render::FgColor,

@@ -15,6 +15,8 @@ pub fn render(
     content: &[(PathBuf, String)],
     mut progress: impl Progress,
     should_interrupt: &AtomicBool,
+    ss: &SyntaxSet,
+    ts: &ThemeSet,
     Options {
         column_width,
         line_height,
@@ -34,8 +36,6 @@ pub fn render(
     // unused for now
     // could be used to make a "rolling code" animation
     let start = std::time::Instant::now();
-
-    let ss = SyntaxSet::load_defaults_newlines();
 
     //> read files (for /n counting)
     let (content, total_line_count, num_ignored) = {
@@ -104,8 +104,6 @@ pub fn render(
         prodash::unit::label_and_mode("lines", prodash::unit::display::Mode::with_throughput())
             .into(),
     );
-
-    let ts = ThemeSet::load_defaults();
     let mut cache = Cache::new_with_plain_highlighter(
         &ss,
         ts.themes.get(theme).with_context(|| {

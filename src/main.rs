@@ -5,6 +5,8 @@ use std::borrow::Cow;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use syntect::highlighting::ThemeSet;
+use syntect::parsing::SyntaxSet;
 
 mod options;
 
@@ -53,15 +55,28 @@ fn main() -> anyhow::Result<()> {
         ));
     }
 
-    let start = std::time::Instant::now();
+    let ts = ThemeSet::load_defaults();
+    if args.all_themes {
+        assert!(
+            args.theme.is_empty(),
+            "BUG: CLI shouldn't allow to pass custom themes when --all-themes is set"
+        );
+        args.theme = ts.themes.keys().map(ToOwned::to_owned).collect();
+    }
     if args.theme.is_empty() {
         args.theme.push("Solarized (dark)".into());
     }
+
+    let ss = SyntaxSet::load_defaults_newlines();
     for (theme_idx, theme) in args.theme.iter().enumerate() {
+        let start = std::time::Instant::now();
+
         let img = codevis::render(
             &paths,
             progress.add_child("render"),
             &should_interrupt,
+            &ss,
+            &ts,
             codevis::render::Options {
                 column_width: args.column_width_pixels,
                 line_height: args.line_height_pixels,

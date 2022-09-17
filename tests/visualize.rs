@@ -2,9 +2,14 @@ use bstr::ByteSlice;
 use codevis::render;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
+use syntect::highlighting::ThemeSet;
+use syntect::parsing::SyntaxSet;
 
 #[test]
 fn various_renders() {
+    let ss = SyntaxSet::load_defaults_newlines();
+    let ts = ThemeSet::load_defaults();
+
     let (paths, ignored) = codevis::unicode_content(
         Path::new("./src/"),
         &[],
@@ -34,6 +39,8 @@ fn various_renders() {
         &paths,
         prodash::progress::Discard,
         &AtomicBool::default(),
+        &ss,
+        &ts,
         opts,
     )
     .unwrap();
@@ -51,6 +58,8 @@ fn various_renders() {
         &paths,
         prodash::progress::Discard,
         &AtomicBool::default(),
+        &ss,
+        &ts,
         opts,
     )
     .unwrap();
@@ -60,6 +69,8 @@ fn various_renders() {
         &paths,
         prodash::progress::Discard,
         &AtomicBool::default(),
+        &ss,
+        &ts,
         opts,
     )
     .unwrap();
@@ -67,6 +78,8 @@ fn various_renders() {
 
 #[test]
 fn multi_threading_produces_same_result_as_single_threaded_mode() {
+    let ss = SyntaxSet::load_defaults_newlines();
+    let ts = ThemeSet::load_defaults();
     let (paths, ignored) = codevis::unicode_content(
         Path::new("./src/"),
         &[],
@@ -96,6 +109,8 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
         &paths,
         prodash::progress::Discard,
         &AtomicBool::default(),
+        &ss,
+        &ts,
         opts,
     )
     .unwrap();
@@ -105,6 +120,8 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
         &paths,
         prodash::progress::Discard,
         &AtomicBool::default(),
+        &ss,
+        &ts,
         opts,
     )
     .unwrap();
