@@ -68,7 +68,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     let ss = SyntaxSet::load_defaults_newlines();
-    for (theme_idx, theme) in args.theme.iter().enumerate() {
+    for theme in &args.theme {
         let start = std::time::Instant::now();
 
         let img = codevis::render(
@@ -93,8 +93,7 @@ fn main() -> anyhow::Result<()> {
                 ignore_files_without_syntax: args.ignore_files_without_syntax,
             },
         )?;
-        let is_first = theme_idx == 0;
-        let img_path = if is_first {
+        let img_path = if args.theme.len() == 1 {
             Cow::Borrowed(&args.output_path)
         } else {
             let mut extension = theme.replace('(', "").replace(')', "").replace(' ', "-");
