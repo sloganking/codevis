@@ -66,7 +66,7 @@ fn main() -> anyhow::Result<()> {
             force_full_columns: !args.dont_force_full_columns,
             plain: args.force_plain_syntax,
             display_to_be_processed_file: args.display_to_be_processed_file,
-            theme: &args.theme,
+            themes: &args.theme,
             fg_color: args.fg_pixel_color,
             bg_color: args.bg_pixel_color,
             color_modulation: args.color_modulation,

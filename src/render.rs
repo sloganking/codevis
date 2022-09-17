@@ -62,7 +62,7 @@ pub struct Options<'a> {
 
     pub fg_color: FgColor,
     pub bg_color: BgColor,
-    pub theme: &'a str,
+    pub themes: &'a [String],
 
     pub force_full_columns: bool,
     pub ignore_files_without_syntax: bool,
@@ -216,7 +216,7 @@ pub(crate) mod function {
             bg_color,
             highlight_truncated_lines,
             display_to_be_processed_file,
-            theme,
+            themes,
             force_full_columns,
             plain,
             ignore_files_without_syntax,
@@ -279,16 +279,26 @@ pub(crate) mod function {
 
         let ts = ThemeSet::load_defaults();
         let mut prev_syntax = ss.find_syntax_plain_text() as *const _;
-        let theme = ts.themes.get(theme).with_context(|| {
-            format!(
-                "Could not find theme {theme:?}, must be one of {}",
-                ts.themes
-                    .keys()
-                    .map(|s| format!("{s:?}"))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )
-        })?;
+        let themes: Vec<_> = if themes.is_empty() {
+            vec![ts.themes.get("Solarized (dark)").expect("built-in")]
+        } else {
+            themes
+                .iter()
+                .map(|theme| {
+                    ts.themes.get(theme).with_context(|| {
+                        format!(
+                            "Could not find theme {theme:?}, must be one of {}",
+                            ts.themes
+                                .keys()
+                                .map(|s| format!("{s:?}"))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    })
+                })
+                .collect::<Result<_, _>>()?
+        };
+        let theme = &themes[0]; // TODO: figure out what state is per theme actually.
 
         let threads = (threads == 0)
             .then(num_cpus::get)

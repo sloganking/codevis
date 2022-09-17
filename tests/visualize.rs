@@ -14,7 +14,6 @@ fn various_renders() {
     .unwrap();
     assert_eq!(ignored, 0, "no ignore pattern configured");
 
-    let theme = "Solarized (dark)";
     let mut opts = render::Options {
         column_width: 100,
         line_height: 1,
@@ -26,7 +25,7 @@ fn various_renders() {
         bg_color: codevis::render::BgColor::Style,
         color_modulation: 0.2,
         threads: 1,
-        theme,
+        themes: &[],
         force_full_columns: false,
         ignore_files_without_syntax: true,
     };
@@ -77,7 +76,7 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
     .unwrap();
     assert_eq!(ignored, 0, "no ignore pattern configured");
 
-    let theme = "Solarized (dark)";
+    let themes = vec![String::from("Solarized (dark)")];
     let mut opts = render::Options {
         column_width: 100,
         line_height: 1,
@@ -88,7 +87,7 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
         fg_color: codevis::render::FgColor::Style,
         bg_color: codevis::render::BgColor::Style,
         threads: 1,
-        theme,
+        themes: &themes,
         color_modulation: 0.2,
         force_full_columns: false,
         ignore_files_without_syntax: true,
