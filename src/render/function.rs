@@ -1,4 +1,5 @@
 use crate::render::chunk::calc_offsets;
+use crate::render::Cache;
 use crate::render::Dimension;
 use crate::render::{chunk, Options};
 use anyhow::{bail, Context};
@@ -76,10 +77,10 @@ pub fn render(
         progress.add_child("determine dimensions"),
     )?;
 
+    let theme_count = themes.len().max(1);
     let num_pixels = {
         let channel_count = Rgb::<u8>::CHANNEL_COUNT;
         let num_pixels = imgx as usize * imgy as usize * channel_count as usize;
-        let theme_count = themes.len().max(1);
         progress.info(format!(
             "Image dimensions: {imgx} x {imgy} x {channel_count} x {theme_count} [x * y * channels * themes] ({} in virtual memory)",
             bytesize::ByteSize(num_pixels as u64 * theme_count as u64),
@@ -99,33 +100,38 @@ pub fn render(
     );
     let mut line_progress = progress.add_child("render");
     line_progress.init(
-        Some(total_line_count as usize),
+        Some(total_line_count as usize * theme_count),
         prodash::unit::label_and_mode("lines", prodash::unit::display::Mode::with_throughput())
             .into(),
     );
 
     let ts = ThemeSet::load_defaults();
-    let mut prev_syntax = ss.find_syntax_plain_text() as *const _;
-    let themes: Vec<_> = if themes.is_empty() {
-        vec![ts.themes.get("Solarized (dark)").expect("built-in")]
+    let mut states: Vec<_> = if themes.is_empty() {
+        vec![Cache::new_with_plain_highlighter(
+            &ss,
+            ts.themes.get("Solarized (dark)").expect("built-in"),
+        )]
     } else {
         themes
             .iter()
             .map(|theme| {
-                ts.themes.get(theme).with_context(|| {
-                    format!(
-                        "Could not find theme {theme:?}, must be one of {}",
-                        ts.themes
-                            .keys()
-                            .map(|s| format!("{s:?}"))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
-                })
+                ts.themes
+                    .get(theme)
+                    .with_context(|| {
+                        format!(
+                            "Could not find theme {theme:?}, must be one of {}",
+                            ts.themes
+                                .keys()
+                                .map(|s| format!("{s:?}"))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    })
+                    .map(|theme| Cache::new_with_plain_highlighter(&ss, theme))
             })
             .collect::<Result<_, _>>()?
     };
-    let theme = &themes[0]; // TODO: figure out what state is per theme actually.
+    let state = &mut states[0];
 
     let threads = (threads == 0)
         .then(num_cpus::get)
@@ -135,21 +141,15 @@ pub fn render(
         let mut line_num: u32 = 0;
         let mut longest_line_chars = 0;
         let mut background = None;
-        let mut highlighter =
-            syntect::easy::HighlightLines::new(ss.find_syntax_plain_text(), theme);
+        let mut highlighter = state.new_plain_highlighter();
         for (file_index, ((path, content), num_content_lines)) in content.into_iter().enumerate() {
             progress.inc();
             if should_interrupt.load(Ordering::Relaxed) {
                 bail!("Cancelled by user")
             }
-
             if !plain {
-                let syntax = ss
-                    .find_syntax_for_file(&path)?
-                    .unwrap_or_else(|| ss.find_syntax_plain_text());
-                if syntax as *const _ != prev_syntax {
-                    highlighter = syntect::easy::HighlightLines::new(syntax, theme);
-                    prev_syntax = syntax as *const _;
+                if let Some(hl) = state.highlighter_for_file_name(&path)? {
+                    highlighter = hl;
                 }
             }
 
@@ -193,26 +193,21 @@ pub fn render(
         let mut longest_line_chars = 0;
         let mut background = None;
         std::thread::scope(|scope| -> anyhow::Result<()> {
-            let (tx, rx) = flume::bounded::<(_, String, _, _, _)>(content.len());
+            let (tx, rx) = flume::bounded::<(PathBuf, String, _, _, _)>(content.len());
             let (ttx, trx) = flume::unbounded();
             for tid in 0..threads {
                 scope.spawn({
                     let rx = rx.clone();
                     let ttx = ttx.clone();
                     let ss = &ss;
+                    let mut state = state.clone();
                     let mut progress = line_progress.add_child(format!("Thread {tid}"));
                     move || -> anyhow::Result<()> {
-                        let mut prev_syntax = ss.find_syntax_plain_text() as *const _;
-                        let mut highlighter =
-                            syntect::easy::HighlightLines::new(ss.find_syntax_plain_text(), theme);
+                        let mut highlighter = state.new_plain_highlighter();
                         for (path, content, num_content_lines, lines_so_far, file_index) in rx {
                             if !plain {
-                                let syntax = ss
-                                    .find_syntax_for_file(&path)?
-                                    .unwrap_or_else(|| ss.find_syntax_plain_text());
-                                if syntax as *const _ != prev_syntax {
-                                    highlighter = syntect::easy::HighlightLines::new(syntax, theme);
-                                    prev_syntax = syntax as *const _;
+                                if let Some(hl) = state.highlighter_for_file_name(&path)? {
+                                    highlighter = hl;
                                 }
                             }
 

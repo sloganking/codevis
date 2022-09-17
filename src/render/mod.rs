@@ -71,7 +71,8 @@ pub struct Options<'a> {
     pub color_modulation: f32,
 }
 
-mod state;
+mod highlight;
+use highlight::Cache;
 
 pub(crate) mod function;
 
