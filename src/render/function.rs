@@ -76,12 +76,16 @@ pub fn render(
         progress.add_child("determine dimensions"),
     )?;
 
-    let channel_count = Rgb::<u8>::CHANNEL_COUNT;
-    let num_pixels = imgx as usize * imgy as usize * channel_count as usize;
-    progress.info(format!(
-        "Image dimensions: {imgx} x {imgy} x {channel_count} ({} in virtual memory)",
-        bytesize::ByteSize(num_pixels as u64)
-    ));
+    let num_pixels = {
+        let channel_count = Rgb::<u8>::CHANNEL_COUNT;
+        let num_pixels = imgx as usize * imgy as usize * channel_count as usize;
+        let theme_count = themes.len().max(1);
+        progress.info(format!(
+            "Image dimensions: {imgx} x {imgy} x {channel_count} x {theme_count} [x * y * channels * themes] ({} in virtual memory)",
+            bytesize::ByteSize(num_pixels as u64 * theme_count as u64),
+        ));
+        num_pixels
+    };
 
     let mut img =
         ImageBuffer::<Rgb<u8>, _>::from_raw(imgx, imgy, memmap2::MmapMut::map_anon(num_pixels)?)

@@ -76,7 +76,10 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
     .unwrap();
     assert_eq!(ignored, 0, "no ignore pattern configured");
 
-    let themes = vec![String::from("Solarized (dark)")];
+    let themes = vec![
+        String::from("Solarized (light)"),
+        String::from("Solarized (dark)"),
+    ];
     let mut opts = render::Options {
         column_width: 100,
         line_height: 1,
