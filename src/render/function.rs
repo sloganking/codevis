@@ -105,7 +105,7 @@ pub fn render(
             .into(),
     );
     let mut cache = Cache::new_with_plain_highlighter(
-        &ss,
+        ss,
         ts.themes.get(theme).with_context(|| {
             format!(
                 "Could not find theme {theme:?}, must be one of {}",
@@ -135,7 +135,7 @@ pub fn render(
                 bail!("Cancelled by user")
             }
             if !plain {
-                if let Some(hl) = cache.highlighter_for_file_name(&path)? {
+                if let Some(hl) = cache.highlighter_for_file_name(path)? {
                     highlighter = hl;
                 }
             }
@@ -144,9 +144,9 @@ pub fn render(
                 progress.info(format!("{path:?}"))
             }
             let out = chunk::process(
-                &content,
+                content,
                 &mut img,
-                |line| highlighter.highlight_line(line, &ss),
+                |line| highlighter.highlight_line(line, ss),
                 chunk::Context {
                     column_width,
                     line_height,
@@ -200,7 +200,7 @@ pub fn render(
                             let ((path, content), num_content_lines, lines_so_far) =
                                 &content[file_index];
                             if !plain {
-                                if let Some(hl) = state.highlighter_for_file_name(&path)? {
+                                if let Some(hl) = state.highlighter_for_file_name(path)? {
                                     highlighter = hl;
                                 }
                             }
@@ -215,7 +215,7 @@ pub fn render(
                                 progress.info(format!("{path:?}"))
                             }
                             let out = chunk::process(
-                                &content,
+                                content,
                                 &mut img,
                                 |line| highlighter.highlight_line(line, ss),
                                 chunk::Context {

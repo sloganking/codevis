@@ -97,7 +97,7 @@ fn main() -> anyhow::Result<()> {
         let img_path = if is_first {
             Cow::Borrowed(&args.output_path)
         } else {
-            let mut extension = theme.replace("(", "").replace(")", "").replace(" ", "-");
+            let mut extension = theme.replace('(', "").replace(')', "").replace(' ', "-");
             extension.push('.');
             extension.push_str(
                 args.output_path
