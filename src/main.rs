@@ -93,7 +93,18 @@ fn main() -> anyhow::Result<()> {
             let theme_specific_path = args.output_path.with_extension(extension);
             Cow::Owned(theme_specific_path)
         };
-        sage_image(img, img_path.as_ref(), progress.add_child("saving"))?;
+        sage_image(
+            img,
+            img_path.as_ref(),
+            progress.add_child(format!(
+                "saving {}",
+                img_path
+                    .as_ref()
+                    .file_name()
+                    .and_then(|f| f.to_str())
+                    .unwrap_or("")
+            )),
+        )?;
 
         if args.open {
             progress
