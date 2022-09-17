@@ -76,3 +76,6 @@ mod state;
 pub(crate) mod function;
 
 mod chunk;
+
+mod dimension;
+use dimension::Dimension;
