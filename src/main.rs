@@ -37,6 +37,7 @@ fn main() -> anyhow::Result<()> {
         .auto_configure(prodash::render::line::StreamKind::Stderr),
     );
 
+    // determine files to render
     let (paths, ignored) = codevis::unicode_content(
         &args.input_dir,
         &args.ignore_extension,
@@ -55,6 +56,7 @@ fn main() -> anyhow::Result<()> {
         ));
     }
 
+    // determine themes to render files with
     let ts = ThemeSet::load_defaults();
     if args.all_themes {
         assert!(
@@ -96,6 +98,7 @@ fn main() -> anyhow::Result<()> {
         let img_path = if args.theme.len() == 1 {
             Cow::Borrowed(&args.output_path)
         } else {
+            // mutate the output filename to include the theme in it.
             let mut extension = theme.replace('(', "").replace(')', "").replace(' ', "-");
             extension.push('.');
             extension.push_str(
