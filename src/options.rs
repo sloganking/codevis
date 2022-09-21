@@ -61,10 +61,10 @@ pub struct Args {
     #[clap(long, default_value_t = 9.0, help_heading = "IMAGE")]
     pub aspect_height: f64,
 
-    /// The themes to use for rendering. Use `foo` to see a list of possible values, defaulting to "Solarized (dark)"
+    /// The themes to use for rendering. Use `foo` to see a list of possible values.
     ///
     /// If multiple are specified, the output file name will be adjusted to match the theme accordingly.
-    #[clap(long, help_heading = "COLORS")]
+    #[clap(long, default_values = &["Solarized (dark)"], help_heading = "COLORS")]
     pub theme: Vec<String>,
 
     /// Render the input with all available themes, one after another.
