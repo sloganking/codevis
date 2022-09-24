@@ -1,6 +1,5 @@
 use std::path::Path;
 
-#[allow(dead_code)]
 pub(crate) struct Cache<'syntax, 'theme> {
     syntax: &'syntax syntect::parsing::SyntaxSet,
     theme: &'theme syntect::highlighting::Theme,
@@ -17,7 +16,6 @@ impl<'a, 'b> Clone for Cache<'a, 'b> {
     }
 }
 
-#[allow(dead_code)]
 impl<'syntax, 'theme> Cache<'syntax, 'theme> {
     pub fn new_with_plain_highlighter(
         syntax: &'syntax syntect::parsing::SyntaxSet,
@@ -36,7 +34,6 @@ impl<'syntax, 'theme> Cache<'syntax, 'theme> {
     }
 }
 
-#[allow(dead_code)]
 impl<'syntax, 'theme> Cache<'syntax, 'theme> {
     pub fn highlighter_for_file_name(
         &mut self,
