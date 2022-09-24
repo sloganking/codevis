@@ -32,12 +32,14 @@ impl BgColor {
             BgColor::HelixEditor => Rgb([59, 34, 76]),
             BgColor::StyleCheckerboardDarken | BgColor::StyleCheckerboardBrighten => {
                 let m = if self == &BgColor::StyleCheckerboardBrighten {
-                    (file_index % 2 == 0)
-                        .then(|| 1.0 + color_modulation)
-                        .unwrap_or(1.0)
+                    if file_index % 2 == 0 {
+                        1.0 + color_modulation
+                    } else {
+                        1.0
+                    }
                 } else {
                     (file_index % 2 == 0)
-                        .then(|| 1.0)
+                        .then_some(1.0)
                         .unwrap_or_else(|| (1.0_f32 - color_modulation).max(0.0))
                 };
                 Rgb([

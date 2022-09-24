@@ -194,7 +194,7 @@ pub fn render(
                         let mut highlighter = state.new_plain_highlighter();
                         while let Ok(file_index) =
                             file_index.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| {
-                                (x < content.len()).then(|| x + 1)
+                                (x < content.len()).then_some(x + 1)
                             })
                         {
                             let ((path, content), num_content_lines, lines_so_far) =

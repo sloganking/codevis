@@ -83,9 +83,11 @@ where
                 .then(|| &line[..bytes_till_char_limit])
                 .unwrap_or(line);
             (
-                highlight_truncated_lines
-                    .then(|| possibly_truncated_line)
-                    .unwrap_or(line),
+                if highlight_truncated_lines {
+                    possibly_truncated_line
+                } else {
+                    line
+                },
                 possibly_truncated_line,
             )
         };

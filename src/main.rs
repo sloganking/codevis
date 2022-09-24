@@ -17,7 +17,11 @@ fn main() -> anyhow::Result<()> {
     let _ = signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&should_interrupt));
 
     let progress: Arc<prodash::Tree> = prodash::TreeOptions {
-        message_buffer_capacity: args.display_to_be_processed_file.then(|| 200).unwrap_or(20),
+        message_buffer_capacity: if args.display_to_be_processed_file {
+            200
+        } else {
+            20
+        },
         ..Default::default()
     }
     .into();
