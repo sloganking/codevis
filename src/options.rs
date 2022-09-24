@@ -61,9 +61,20 @@ pub struct Args {
     #[clap(long, default_value_t = 9.0, help_heading = "IMAGE")]
     pub aspect_height: f64,
 
-    /// The theme to use for rendering. Use `foo` to see a list of possible values
-    #[clap(long, default_value = "Solarized (dark)", help_heading = "COLORS")]
-    pub theme: String,
+    /// The themes to use for rendering. Use `foo` to see a list of possible values.
+    ///
+    /// If multiple are specified, the output file name will be adjusted to match the theme accordingly.
+    #[clap(long, default_values = &["Solarized (dark)"], help_heading = "COLORS")]
+    pub theme: Vec<String>,
+
+    /// Render the input with all available themes, one after another.
+    #[clap(
+        long,
+        help_heading = "COLORS",
+        conflicts_with("theme"),
+        conflicts_with("force-plain-syntax")
+    )]
+    pub all_themes: bool,
 
     /// The way foreground pixels are colored.
     #[clap(value_enum, long, default_value_t = codevis::render::FgColor::StyleAsciiBrightness, help_heading = "COLORS")]
