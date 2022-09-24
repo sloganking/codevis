@@ -223,11 +223,13 @@ pub(crate) mod function {
             color_modulation,
         }: Options,
     ) -> anyhow::Result<ImageBuffer<Rgb<u8>, MmapMut>> {
+        // unused for now
+        // could be used to make a "rolling code" animation
         let start = std::time::Instant::now();
 
         let ss = SyntaxSet::load_defaults_newlines();
 
-        // read files (for /n counting)
+        //> read files (for /n counting)
         let (content, total_line_count, num_ignored) = {
             let mut out = Vec::with_capacity(content.len());
             let mut lines = 0;
@@ -348,17 +350,15 @@ pub(crate) mod function {
             //
             // Spawns threadpool and each file to be renered is sent to a thread as a message via a flume channel.
             // Upon recieving a message, a thread renders the entire file to an image of one column width.
-            // and then returns that image to this main thread via a flume channel. This main thread  then stitches together
-            // those smaller images into one large image. The ordering of files rendered in the final image is remembered and
+            // and then returns that image to this main thread via a flume channel, to be stitched together
+            // into one large image. The ordering of files rendered in the final image is remembered and
             // independant of thread rendering order.
 
             let mut line_num: u32 = 0;
             let mut longest_line_chars = 0;
             let mut background = None;
             std::thread::scope(|scope| -> anyhow::Result<()> {
-                // tx/rx are used to tell the threads what files to render.
                 let (tx, rx) = flume::bounded::<(_, String, _, _, _)>(content.len());
-                // ttx/trx are used to return the results of rendering.
                 let (ttx, trx) = flume::unbounded();
                 for tid in 0..threads {
                     scope.spawn({
@@ -417,8 +417,6 @@ pub(crate) mod function {
                     });
                 }
                 drop((rx, ttx));
-
-                // Pass each file to render, to the threadpool via a channel.
                 let mut lines_so_far = 0u32;
                 for (file_index, ((path, content), num_content_lines)) in
                     content.into_iter().enumerate()
@@ -428,7 +426,7 @@ pub(crate) mod function {
                 }
                 drop(tx);
 
-                // For each file image that was rendered by a thread.
+                // for each file image that was rendered by a thread.
                 for (sub_img, out, num_content_lines, lines_so_far) in trx {
                     longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
                     background = out.background;
