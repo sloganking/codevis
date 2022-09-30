@@ -1,6 +1,6 @@
 use anyhow::bail;
 use prodash::Progress;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -35,7 +35,12 @@ pub fn unicode_content(
         let path = entry.path();
         if !ignore_extensions.is_empty()
             && path.extension().map_or(false, |ext| {
-                ignore_extensions.iter().any(|extension| ext == extension)
+                ignore_extensions.iter().flat_map(|ext| match ext.to_str() {
+                    Some(ext) => {
+                        ext.split(',').map(OsStr::new).collect()
+                    },
+                    None => vec![ext.as_os_str()],
+                }).any(|extension| ext == extension)
             })
         {
             ignored += 1;
