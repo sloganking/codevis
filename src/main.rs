@@ -63,14 +63,7 @@ fn main() -> anyhow::Result<()> {
     // determine themes to render files with
     let ts = ThemeSet::load_defaults();
     if args.all_themes {
-        assert!(
-            args.theme.is_empty(),
-            "BUG: CLI shouldn't allow to pass custom themes when --all-themes is set"
-        );
         args.theme = ts.themes.keys().map(ToOwned::to_owned).collect();
-    }
-    if args.theme.is_empty() {
-        args.theme.push("Solarized (dark)".into());
     }
 
     let ss = SyntaxSet::load_defaults_newlines();
