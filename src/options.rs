@@ -9,7 +9,7 @@ pub struct Args {
     pub input_dir: PathBuf,
 
     /// An extension to ignore, like `md` for markdown files.
-    #[clap(long, help_heading = "INPUT")]
+    #[clap(long, help_heading = "INPUT", value_delimiter = ',')]
     pub ignore_extension: Vec<OsString>,
 
     /// If true, files that would be rendered white due to lack of syntax are skipped.
@@ -64,7 +64,7 @@ pub struct Args {
     /// The themes to use for rendering. Use `foo` to see a list of possible values.
     ///
     /// If multiple are specified, the output file name will be adjusted to match the theme accordingly.
-    #[clap(long, default_values = &["Solarized (dark)"], help_heading = "COLORS")]
+    #[clap(long, default_values = &["Solarized (dark)"], help_heading = "COLORS", value_delimiter = ',')]
     pub theme: Vec<String>,
 
     /// Render the input with all available themes, one after another.
