@@ -72,7 +72,7 @@ pub struct Args {
         long,
         help_heading = "COLORS",
         conflicts_with("theme"),
-        conflicts_with("force-plain-syntax")
+        conflicts_with("force_plain_syntax")
     )]
     pub all_themes: bool,
 

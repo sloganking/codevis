@@ -24,7 +24,7 @@ memmap2 = "0.5.7"
 num_cpus = "1.13.1"
 flume = { version = "0.10.14", default-features = false }
 open = "3.0.2"
-clap = { version = "3.2.20", features = ["derive"] }
+clap = { version = "4.0.9", features = ["derive"] }
 bytesize = "1.1.0"
 bstr = "1.0.0"
 anyhow = "1.0.63"
