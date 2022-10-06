@@ -42,7 +42,7 @@ fn main() -> anyhow::Result<()> {
     );
 
     // determine files to render
-    let (paths, ignored) = codevis::unicode_content(
+    let (mut paths, mut ignored) = codevis::unicode_content(
         &args.input_dir,
         &args.ignore_extension,
         progress.add_child("search unicode files"),
@@ -54,6 +54,24 @@ fn main() -> anyhow::Result<()> {
             args.input_dir
         )
     })?;
+
+    // filter extensions if there is a whitelist
+    if !args.whitelist_extension.is_empty() {
+        let mut whitelist_ignored: usize = 0;
+        paths.retain(|(path, _)| {
+            path.extension().map_or(false, |ext| {
+                if args.whitelist_extension.contains(&ext.to_owned()) {
+                    true
+                } else {
+                    whitelist_ignored += 1;
+                    false
+                }
+            })
+        });
+        ignored = whitelist_ignored;
+    }
+
+    // log num ignored files
     if ignored != 0 {
         progress.add_child("input").info(format!(
             "Ignored {ignored} files that matched ignored extensions"
