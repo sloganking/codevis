@@ -5,7 +5,7 @@ use std::path::PathBuf;
 #[clap(version)]
 pub struct Args {
     /// The directory to read UTF-8 encoded text files from.
-    #[clap(long, short = 'i', default_value = "input", help_heading = "INPUT")]
+    #[clap(long, short = 'i', help_heading = "INPUT")]
     pub input_dir: PathBuf,
 
     /// An extension to ignore, like `md` for markdown files.
