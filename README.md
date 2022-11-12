@@ -10,7 +10,7 @@ This repo's render of [sloganking/My-Own-OS](https://github.com/sloganking/My-Ow
 
 - Install [the Rust programming language.](https://www.rust-lang.org/)
 - Run `cargo install codevis`
-- You may have to add your cargo binary installation folder to your system's path, if it is not there already.
+- You may have to add cargo's binary installation folder (`/home/username/.cargo/bin/` on Linux) to your system's path, if it is not there already.
 
 ## CLI Usage
 
