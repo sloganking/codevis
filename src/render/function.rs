@@ -31,6 +31,7 @@ pub fn render(
         plain,
         ignore_files_without_syntax,
         color_modulation,
+        tab_spaces,
     }: Options,
 ) -> anyhow::Result<ImageBuffer<Rgb<u8>, MmapMut>> {
     // unused for now
@@ -158,6 +159,7 @@ pub fn render(
                     bg_color,
                     file_index,
                     color_modulation,
+                    tab_spaces,
                 },
             )?;
             longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
@@ -229,6 +231,7 @@ pub fn render(
                                     bg_color,
                                     file_index,
                                     color_modulation,
+                                    tab_spaces,
                                 },
                             )?;
                             ttx.send((img, out, *num_content_lines, *lines_so_far))?;

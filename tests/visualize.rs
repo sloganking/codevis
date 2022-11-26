@@ -34,6 +34,7 @@ fn various_renders() {
         theme,
         force_full_columns: false,
         ignore_files_without_syntax: true,
+        tab_spaces: 4,
     };
     codevis::render(
         &paths,
@@ -104,6 +105,7 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
         color_modulation: 0.2,
         force_full_columns: false,
         ignore_files_without_syntax: true,
+        tab_spaces: 4,
     };
     let expected = codevis::render(
         &paths,

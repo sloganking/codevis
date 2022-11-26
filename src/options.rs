@@ -112,4 +112,8 @@ pub struct Args {
         help_heading = "OUTPUT"
     )]
     pub output_path: PathBuf,
+
+    /// The number of spaces that a tab character is equivalent to.
+    #[clap(long, default_value_t = 4, help_heading = "IMAGE")]
+    pub tab_spaces: u32,
 }

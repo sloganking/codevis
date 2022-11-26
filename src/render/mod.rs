@@ -71,6 +71,7 @@ pub struct Options<'a> {
     pub plain: bool,
     pub display_to_be_processed_file: bool,
     pub color_modulation: f32,
+    pub tab_spaces: u32,
 }
 
 mod highlight;

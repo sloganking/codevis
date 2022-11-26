@@ -25,6 +25,7 @@ pub struct Context {
 
     pub file_index: usize,
     pub color_modulation: f32,
+    pub tab_spaces: u32,
 }
 
 /// Return the `(x, y)` offsets to apply to the given line, to wrap columns of lines into the
@@ -56,6 +57,7 @@ pub fn process<C>(
         bg_color,
         file_index,
         color_modulation,
+        tab_spaces,
     }: Context,
 ) -> anyhow::Result<Outcome>
 where
@@ -150,7 +152,6 @@ where
 
                     cur_line_x += 1;
                 } else if chr == '\t' {
-                    let tab_spaces = 4;
                     let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
 
                     for _ in 0..spaces_to_add {

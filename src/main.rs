@@ -108,6 +108,7 @@ fn main() -> anyhow::Result<()> {
                 bg_color: args.bg_pixel_color,
                 color_modulation: args.color_modulation,
                 ignore_files_without_syntax: args.ignore_files_without_syntax,
+                tab_spaces: args.tab_spaces,
             },
         )?;
         let img_path = if args.theme.len() == 1 {
