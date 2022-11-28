@@ -74,6 +74,27 @@ pub struct Options<'a> {
     pub tab_spaces: u32,
 }
 
+impl Default for Options<'_> {
+    fn default() -> Self {
+        Options {
+            column_width: 100,
+            line_height: 2,
+            target_aspect_ratio: 16. / 9.,
+            threads: num_cpus::get(),
+            highlight_truncated_lines: false,
+            fg_color: FgColor::StyleAsciiBrightness,
+            bg_color: BgColor::Style,
+            theme: "Solarized (dark)",
+            force_full_columns: true,
+            ignore_files_without_syntax: false,
+            plain: false,
+            display_to_be_processed_file: false,
+            color_modulation: 0.3,
+            tab_spaces: 4,
+        }
+    }
+}
+
 mod highlight;
 use highlight::Cache;
 
