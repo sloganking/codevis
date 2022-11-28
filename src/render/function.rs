@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
 
+/// Render the given files to an image. Using the given syntax, theme and render options.
 pub fn render(
     content: &[(PathBuf, String)],
     mut progress: impl Progress,

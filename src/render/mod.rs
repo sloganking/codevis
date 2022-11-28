@@ -55,22 +55,29 @@ impl BgColor {
 /// Configure how to render an image.
 #[derive(Debug, Copy, Clone)]
 pub struct Options<'a> {
+    /// How many characters wide each column is.
     pub column_width: u32,
+    /// How many pixels high each line is.
     pub line_height: u32,
     pub target_aspect_ratio: f64,
 
+    /// The number of threads to use for rendering.
     pub threads: usize,
     pub highlight_truncated_lines: bool,
 
     pub fg_color: FgColor,
     pub bg_color: BgColor,
+    /// The color theme to use.
     pub theme: &'a str,
 
+    /// Sacrifice aspect ratio to fill the image with full columns.
     pub force_full_columns: bool,
+    /// Whether to ignore files without syntactic highlighting.
     pub ignore_files_without_syntax: bool,
     pub plain: bool,
     pub display_to_be_processed_file: bool,
     pub color_modulation: f32,
+    /// The number of spaces to use for a tab character.
     pub tab_spaces: u32,
 }
 
