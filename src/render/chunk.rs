@@ -171,10 +171,9 @@ where
                         img,
                         background,
                         &char_color,
+                        &mut cur_line_x,
                     );
                     // }
-
-                    cur_line_x += 1;
                 } else if chr == '\t' {
                     let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
 
@@ -197,10 +196,9 @@ where
                             img,
                             background,
                             &char_color,
+                            &mut cur_line_x,
                         );
                         // }
-
-                        cur_line_x += 1;
                     }
                 } else {
                     // for y_pos in cur_y..cur_y + line_height {
@@ -217,10 +215,9 @@ where
                         img,
                         background,
                         &char_color,
+                        &mut cur_line_x,
                     );
                     // }
-
-                    cur_line_x += 1;
                 }
             }
         }
@@ -240,10 +237,9 @@ where
                 img,
                 background,
                 background,
+                &mut cur_line_x,
             );
             // }
-
-            cur_line_x += 1;
         }
 
         line_num += 1;
@@ -263,6 +259,7 @@ fn put_char_in_image<C>(
     img: &mut ImageBuffer<Rgb<u8>, C>,
     background_color: &Rgb<u8>,
     text_color: &Rgb<u8>,
+    cur_line_x: &mut u32,
 ) where
     C: Deref<Target = [u8]>,
     C: DerefMut,
@@ -304,6 +301,12 @@ fn put_char_in_image<C>(
                 }
             }
         }
+    }
+
+    if bitmap.is_wide() {
+        *cur_line_x += 2;
+    } else {
+        *cur_line_x += 1;
     }
 }
 
