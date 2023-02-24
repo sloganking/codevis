@@ -99,6 +99,8 @@ where
             )
         };
 
+        // println!("line: {:?}", line);
+
         let actual_line = line_num % total_line_count;
         let (cur_column_x_offset, cur_y) = calc_offsets(
             actual_line,
@@ -269,14 +271,14 @@ fn put_char_in_image<C>(
 
     // get bitmap dimensions
     let char_height = 16;
-    let standard_char_width = 8;
+    // let standard_char_width = 8;
     let char_width = if bitmap.is_wide() { 16 } else { 8 };
 
     // add bitmap to image
-    for y in 0..char_height {
+    for y in 0..char_height as usize {
         for x in 0..char_width {
-            // let img_x = char_x * standard_char_width + x;
-            // let img_y = y + line_num * char_height;
+            let pixel_x = img_x + x;
+            let pixel_y = img_y + y as u32;
 
             // get pixel from bitmap
             let should_pixel = if bitmap.is_wide() {
@@ -285,15 +287,20 @@ fn put_char_in_image<C>(
                 bitmap.get_bytes()[y] & (1 << (7 - x)) != 0
             };
 
-            // if in image bounds
-            if img_x >= img.width() || img_y >= img.height() {
+            // if not in image bounds
+            if pixel_x >= img.width() || pixel_y >= img.height() {
+                println!(
+                    "Spipping pixel. out of bounds: {}, {}",
+                    img_x + x,
+                    img_y + y as u32
+                );
                 continue;
             } else {
                 // set pixel in image
                 if should_pixel {
-                    img.put_pixel(img_x + x, img_y + y as u32, *text_color);
+                    img.put_pixel(pixel_x, pixel_y, *text_color);
                 } else {
-                    img.put_pixel(img_x + x, img_y + y as u32, *background_color);
+                    img.put_pixel(pixel_x, pixel_y, *background_color);
                 }
             }
         }
