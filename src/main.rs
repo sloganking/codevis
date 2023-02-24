@@ -105,7 +105,11 @@ fn main() -> anyhow::Result<()> {
                 plain: args.force_plain_syntax,
                 display_to_be_processed_file: args.display_to_be_processed_file,
                 theme,
-                fg_color: args.fg_pixel_color,
+                fg_color: if args.readable {
+                    codevis::render::FgColor::Style
+                } else {
+                    args.fg_pixel_color
+                },
                 bg_color: args.bg_pixel_color,
                 color_modulation: args.color_modulation,
                 ignore_files_without_syntax: args.ignore_files_without_syntax,
