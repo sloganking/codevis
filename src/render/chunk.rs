@@ -164,7 +164,7 @@ where
                     //     *background,
                     // );
                     put_char_in_image(
-                        chr,
+                        ' ',
                         &mut unifont,
                         cur_column_x_offset + cur_line_x * char_width,
                         cur_y,
