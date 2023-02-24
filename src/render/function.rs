@@ -304,9 +304,13 @@ pub fn render(
             calc_offsets(line_num, lines_per_column, column_width, line_height);
         let background = background.unwrap_or(Rgb([0, 0, 0]));
 
-        for cur_line_x in 0..column_width {
+        for cur_line_x in 0..column_width * char_width {
             for y_pos in cur_y..cur_y + line_height {
-                img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
+                img.put_pixel(
+                    cur_column_x_offset * char_width + cur_line_x,
+                    y_pos,
+                    background,
+                );
             }
         }
         line_num += 1;
