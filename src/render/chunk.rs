@@ -3,6 +3,7 @@ use bstr::ByteSlice;
 use image::{ImageBuffer, Rgb};
 use std::ops::{Deref, DerefMut};
 use syntect::highlighting::{Color, Style};
+use unifont_bitmap::{Bitmap, Unifont};
 
 /// The result of processing a chunk.
 pub struct Outcome {
@@ -15,6 +16,7 @@ pub struct Outcome {
 pub struct Context {
     pub column_width: u32,
     pub line_height: u32,
+    pub char_width: u32,
     pub total_line_count: u32,
     pub line_num: u32,
     pub lines_per_column: u32,
@@ -49,6 +51,7 @@ pub fn process<C>(
     Context {
         column_width,
         line_height,
+        char_width,
         total_line_count,
         highlight_truncated_lines,
         mut line_num,
@@ -64,6 +67,8 @@ where
     C: Deref<Target = [u8]>,
     C: DerefMut,
 {
+    let mut unifont = Unifont::open();
+
     let mut longest_line_in_chars = 0;
     let mut background = None::<Rgb<u8>>;
     for line in content.as_bytes().lines_with_terminator() {
@@ -95,8 +100,12 @@ where
         };
 
         let actual_line = line_num % total_line_count;
-        let (cur_column_x_offset, cur_y) =
-            calc_offsets(actual_line, lines_per_column, column_width, line_height);
+        let (cur_column_x_offset, cur_y) = calc_offsets(
+            actual_line,
+            lines_per_column,
+            column_width * char_width,
+            line_height,
+        );
         let storage;
         let array_storage;
 
@@ -146,9 +155,22 @@ where
                 };
 
                 if chr == ' ' || chr == '\n' || chr == '\r' {
-                    for y_pos in cur_y..cur_y + line_height {
-                        img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
-                    }
+                    // for y_pos in cur_y..cur_y + line_height {
+                    // img.put_pixel(
+                    //     cur_column_x_offset + cur_line_x * char_width,
+                    //     y_pos,
+                    //     *background,
+                    // );
+                    put_char_in_image(
+                        chr,
+                        &mut unifont,
+                        cur_column_x_offset + cur_line_x * char_width,
+                        cur_y,
+                        img,
+                        background,
+                        &char_color,
+                    );
+                    // }
 
                     cur_line_x += 1;
                 } else if chr == '\t' {
@@ -159,16 +181,42 @@ where
                             break;
                         }
 
-                        for y_pos in cur_y..cur_y + line_height {
-                            img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
-                        }
+                        // for y_pos in cur_y..cur_y + line_height {
+                        // img.put_pixel(
+                        //     cur_column_x_offset + cur_line_x * char_width,
+                        //     y_pos,
+                        //     *background,
+                        // );
+                        put_char_in_image(
+                            chr,
+                            &mut unifont,
+                            cur_column_x_offset + cur_line_x * char_width,
+                            cur_y,
+                            img,
+                            background,
+                            &char_color,
+                        );
+                        // }
 
                         cur_line_x += 1;
                     }
                 } else {
-                    for y_pos in cur_y..cur_y + line_height {
-                        img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, char_color);
-                    }
+                    // for y_pos in cur_y..cur_y + line_height {
+                    // img.put_pixel(
+                    //     cur_column_x_offset + cur_line_x * char_width,
+                    //     y_pos,
+                    //     char_color,
+                    // );
+                    put_char_in_image(
+                        chr,
+                        &mut unifont,
+                        cur_column_x_offset + cur_line_x * char_width,
+                        cur_y,
+                        img,
+                        background,
+                        &char_color,
+                    );
+                    // }
 
                     cur_line_x += 1;
                 }
@@ -176,9 +224,22 @@ where
         }
 
         while cur_line_x < column_width {
-            for y_pos in cur_y..cur_y + line_height {
-                img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
-            }
+            // for y_pos in cur_y..cur_y + line_height {
+            // img.put_pixel(
+            //     cur_column_x_offset + cur_line_x * char_width,
+            //     y_pos,
+            //     *background,
+            // );
+            put_char_in_image(
+                ' ',
+                &mut unifont,
+                cur_column_x_offset + cur_line_x * char_width,
+                cur_y,
+                img,
+                background,
+                background,
+            );
+            // }
 
             cur_line_x += 1;
         }
@@ -190,6 +251,53 @@ where
         longest_line_in_chars,
         background,
     })
+}
+
+fn put_char_in_image<C>(
+    chr: char,
+    unifont: &mut Unifont,
+    img_x: u32,
+    img_y: u32,
+    img: &mut ImageBuffer<Rgb<u8>, C>,
+    background_color: &Rgb<u8>,
+    text_color: &Rgb<u8>,
+) where
+    C: Deref<Target = [u8]>,
+    C: DerefMut,
+{
+    let bitmap = unifont.load_bitmap(chr.into());
+
+    // get bitmap dimensions
+    let char_height = 16;
+    let standard_char_width = 8;
+    let char_width = if bitmap.is_wide() { 16 } else { 8 };
+
+    // add bitmap to image
+    for y in 0..char_height {
+        for x in 0..char_width {
+            // let img_x = char_x * standard_char_width + x;
+            // let img_y = y + line_num * char_height;
+
+            // get pixel from bitmap
+            let should_pixel = if bitmap.is_wide() {
+                bitmap.get_bytes()[y * 2 + x as usize / 8] & (1 << (7 - x % 8)) != 0
+            } else {
+                bitmap.get_bytes()[y] & (1 << (7 - x)) != 0
+            };
+
+            // if in image bounds
+            if img_x >= img.width() || img_y >= img.height() {
+                continue;
+            } else {
+                // set pixel in image
+                if should_pixel {
+                    img.put_pixel(img_x + x, img_y + y as u32, *text_color);
+                } else {
+                    img.put_pixel(img_x + x, img_y + y as u32, *background_color);
+                }
+            }
+        }
+    }
 }
 
 fn default_bg_color(background: Option<Rgb<u8>>) -> Style {

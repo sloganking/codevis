@@ -21,6 +21,7 @@ pub fn render(
     Options {
         column_width,
         line_height,
+        readable,
         target_aspect_ratio,
         threads,
         fg_color,
@@ -38,6 +39,15 @@ pub fn render(
     // unused for now
     // could be used to make a "rolling code" animation
     let start = std::time::Instant::now();
+
+    let mut line_height = line_height;
+    let mut char_width = 1;
+    if readable {
+        line_height = 16;
+        char_width = 8;
+    }
+    let line_height = line_height;
+    let char_width = char_width;
 
     //> read files (for /n counting)
     let (content, total_line_count, num_ignored) = {
@@ -66,6 +76,9 @@ pub fn render(
         );
     }
 
+    println!("line height = {}", line_height);
+    println!("char width = {}", char_width);
+
     // determine number and height of columns closest to desired aspect ratio
     let Dimension {
         imgx,
@@ -74,12 +87,18 @@ pub fn render(
         required_columns,
     } = crate::render::dimension::compute(
         target_aspect_ratio,
-        column_width,
+        column_width * char_width,
         total_line_count,
         line_height,
         force_full_columns,
         progress.add_child("determine dimensions"),
     )?;
+
+    println!(
+        "Rendering {} lines in {} columns ({} lines per column)",
+        total_line_count, required_columns, lines_per_column
+    );
+    println!("Image dimensions: {} x {}", imgx, imgy);
 
     let num_pixels = {
         let channel_count = Rgb::<u8>::CHANNEL_COUNT;
@@ -152,6 +171,7 @@ pub fn render(
                 chunk::Context {
                     column_width,
                     line_height,
+                    char_width,
                     total_line_count,
                     highlight_truncated_lines,
                     line_num,
@@ -224,6 +244,7 @@ pub fn render(
                                 chunk::Context {
                                     column_width,
                                     line_height,
+                                    char_width,
                                     total_line_count,
                                     highlight_truncated_lines,
                                     line_num: 0,

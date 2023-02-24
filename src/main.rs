@@ -97,6 +97,7 @@ fn main() -> anyhow::Result<()> {
             codevis::render::Options {
                 column_width: args.column_width_pixels,
                 line_height: args.line_height_pixels,
+                readable: args.readable,
                 target_aspect_ratio: args.aspect_width / args.aspect_height,
                 threads: args.threads,
                 highlight_truncated_lines: args.highlight_truncated_lines,
