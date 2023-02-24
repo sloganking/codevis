@@ -157,12 +157,6 @@ where
                 };
 
                 if chr == ' ' || chr == '\n' || chr == '\r' {
-                    // for y_pos in cur_y..cur_y + line_height {
-                    // img.put_pixel(
-                    //     cur_column_x_offset + cur_line_x * char_width,
-                    //     y_pos,
-                    //     *background,
-                    // );
                     put_char_in_image(
                         ' ',
                         &mut unifont,
@@ -173,7 +167,6 @@ where
                         &char_color,
                         &mut cur_line_x,
                     );
-                    // }
                 } else if chr == '\t' {
                     let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
 
@@ -182,12 +175,6 @@ where
                             break;
                         }
 
-                        // for y_pos in cur_y..cur_y + line_height {
-                        // img.put_pixel(
-                        //     cur_column_x_offset + cur_line_x * char_width,
-                        //     y_pos,
-                        //     *background,
-                        // );
                         put_char_in_image(
                             chr,
                             &mut unifont,
@@ -198,15 +185,8 @@ where
                             &char_color,
                             &mut cur_line_x,
                         );
-                        // }
                     }
                 } else {
-                    // for y_pos in cur_y..cur_y + line_height {
-                    // img.put_pixel(
-                    //     cur_column_x_offset + cur_line_x * char_width,
-                    //     y_pos,
-                    //     char_color,
-                    // );
                     put_char_in_image(
                         chr,
                         &mut unifont,
@@ -217,18 +197,11 @@ where
                         &char_color,
                         &mut cur_line_x,
                     );
-                    // }
                 }
             }
         }
 
         while cur_line_x < column_width {
-            // for y_pos in cur_y..cur_y + line_height {
-            // img.put_pixel(
-            //     cur_column_x_offset + cur_line_x * char_width,
-            //     y_pos,
-            //     *background,
-            // );
             put_char_in_image(
                 ' ',
                 &mut unifont,
@@ -239,7 +212,6 @@ where
                 background,
                 &mut cur_line_x,
             );
-            // }
         }
 
         line_num += 1;
