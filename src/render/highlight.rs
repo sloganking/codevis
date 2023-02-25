@@ -41,7 +41,7 @@ impl<'syntax, 'theme> Cache<'syntax, 'theme> {
     ) -> std::io::Result<Option<syntect::easy::HighlightLines<'theme>>> {
         let syntax = self
             .syntax
-            .find_syntax_for_file(&path)?
+            .find_syntax_for_file(path)?
             .unwrap_or_else(|| self.syntax.find_syntax_plain_text());
         if syntax as *const _ as usize != self.prev_syntax {
             self.prev_syntax = syntax as *const _ as usize;

@@ -120,7 +120,7 @@ fn main() -> anyhow::Result<()> {
             Cow::Borrowed(&args.output_path)
         } else {
             // mutate the output filename to include the theme in it.
-            let mut extension = theme.replace('(', "").replace(')', "").replace(' ', "-");
+            let mut extension = theme.replace(['(', ')'], "").replace(' ', "-");
             extension.push('.');
             extension.push_str(
                 args.output_path

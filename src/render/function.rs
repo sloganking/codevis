@@ -58,7 +58,7 @@ pub fn render(
         for (path, content) in content {
             let num_content_lines = content.lines().count();
             lines += num_content_lines;
-            if ignore_files_without_syntax && ss.find_syntax_for_file(&path)?.is_none() {
+            if ignore_files_without_syntax && ss.find_syntax_for_file(path)?.is_none() {
                 lines -= num_content_lines;
                 num_ignored += 1;
             } else {
