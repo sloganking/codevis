@@ -98,7 +98,6 @@ pub fn render(
         "Rendering {} lines in {} columns ({} lines per column)",
         total_line_count, required_columns, lines_per_column
     );
-    println!("Image dimensions: {} x {}", imgx, imgy);
 
     let num_pixels = {
         let channel_count = Rgb::<u8>::CHANNEL_COUNT;
@@ -181,6 +180,7 @@ pub fn render(
                     file_index,
                     color_modulation,
                     tab_spaces,
+                    readable,
                 },
             )?;
             longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
@@ -254,6 +254,7 @@ pub fn render(
                                     file_index,
                                     color_modulation,
                                     tab_spaces,
+                                    readable,
                                 },
                             )?;
                             ttx.send((img, out, *num_content_lines, *lines_so_far))?;

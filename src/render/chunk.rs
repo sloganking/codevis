@@ -28,6 +28,7 @@ pub struct Context {
     pub file_index: usize,
     pub color_modulation: f32,
     pub tab_spaces: u32,
+    pub readable: bool,
 }
 
 /// Return the `(x, y)` offsets to apply to the given line, to wrap columns of lines into the
@@ -61,6 +62,7 @@ pub fn process<C>(
         file_index,
         color_modulation,
         tab_spaces,
+        readable,
     }: Context,
 ) -> anyhow::Result<Outcome>
 where
@@ -157,24 +159,7 @@ where
                 };
 
                 if chr == ' ' || chr == '\n' || chr == '\r' {
-                    put_char_in_image(
-                        ' ',
-                        &mut unifont,
-                        cur_column_x_offset + cur_line_x * char_width,
-                        cur_y,
-                        img,
-                        background,
-                        &char_color,
-                        &mut cur_line_x,
-                    );
-                } else if chr == '\t' {
-                    let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
-
-                    for _ in 0..spaces_to_add {
-                        if cur_line_x >= column_width {
-                            break;
-                        }
-
+                    if readable {
                         put_char_in_image(
                             ' ',
                             &mut unifont,
@@ -185,33 +170,87 @@ where
                             &char_color,
                             &mut cur_line_x,
                         );
+                    } else {
+                        // Fill the char space with a solid color.
+                        for y_pos in cur_y..cur_y + line_height {
+                            img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
+                        }
+                        cur_line_x += 1;
+                    }
+                } else if chr == '\t' {
+                    let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
+
+                    for _ in 0..spaces_to_add {
+                        if cur_line_x >= column_width {
+                            break;
+                        }
+
+                        if readable {
+                            put_char_in_image(
+                                ' ',
+                                &mut unifont,
+                                cur_column_x_offset + cur_line_x * char_width,
+                                cur_y,
+                                img,
+                                background,
+                                &char_color,
+                                &mut cur_line_x,
+                            );
+                        } else {
+                            // Fill the char space with a solid color.
+                            for y_pos in cur_y..cur_y + line_height {
+                                img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
+                            }
+                            cur_line_x += 1;
+                        }
                     }
                 } else {
-                    put_char_in_image(
-                        chr,
-                        &mut unifont,
-                        cur_column_x_offset + cur_line_x * char_width,
-                        cur_y,
-                        img,
-                        background,
-                        &char_color,
-                        &mut cur_line_x,
-                    );
+                    if readable {
+                        put_char_in_image(
+                            chr,
+                            &mut unifont,
+                            cur_column_x_offset + cur_line_x * char_width,
+                            cur_y,
+                            img,
+                            background,
+                            &char_color,
+                            &mut cur_line_x,
+                        );
+                    } else {
+                        // Fill the char space with a solid color.
+                        for y_pos in cur_y..cur_y + line_height {
+                            // println!(
+                            //     "filling pixel: {}, {}",
+                            //     cur_column_x_offset + cur_line_x,
+                            //     y_pos
+                            // );
+                            img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, char_color);
+                        }
+                        cur_line_x += 1;
+                    }
                 }
             }
         }
 
         while cur_line_x < column_width {
-            put_char_in_image(
-                ' ',
-                &mut unifont,
-                cur_column_x_offset + cur_line_x * char_width,
-                cur_y,
-                img,
-                background,
-                background,
-                &mut cur_line_x,
-            );
+            if readable {
+                put_char_in_image(
+                    ' ',
+                    &mut unifont,
+                    cur_column_x_offset + cur_line_x * char_width,
+                    cur_y,
+                    img,
+                    background,
+                    background,
+                    &mut cur_line_x,
+                );
+            } else {
+                // Fill the char space with a solid color.
+                for y_pos in cur_y..cur_y + line_height {
+                    img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
+                }
+                cur_line_x += 1;
+            }
         }
 
         line_num += 1;
