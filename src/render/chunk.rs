@@ -124,6 +124,7 @@ where
             .get_or_insert_with(|| bg_color.to_rgb(regions[0].0, file_index, color_modulation));
         let mut cur_line_x = 0;
 
+        // Draw the line on the image.
         for (style, region) in regions {
             if cur_line_x >= column_width * char_width {
                 break;
@@ -245,8 +246,9 @@ where
             }
         }
 
-        while cur_line_x < column_width * char_width {
-            if readable {
+        // Fill the rest of the line with the background color.
+        if readable {
+            while cur_line_x < column_width {
                 put_char_in_image(
                     ' ',
                     &mut unifont,
@@ -257,7 +259,9 @@ where
                     background,
                     &mut cur_line_x,
                 );
-            } else {
+            }
+        } else {
+            while cur_line_x < column_width * char_width {
                 // Fill the char space with a solid color.
                 let img_x = cur_column_x_offset + cur_line_x;
                 put_solid_char_in_image(
