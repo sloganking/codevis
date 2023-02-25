@@ -344,6 +344,7 @@ fn put_char_in_image<C>(
     }
 }
 
+/// Fill the char space with a solid color.
 fn put_solid_char_in_image<C>(
     img_x: u32,
     img_y: u32,

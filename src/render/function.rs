@@ -230,7 +230,7 @@ pub fn render(
 
                             // create an image that fits one column
                             let mut img = RgbImage::new(
-                                column_width,
+                                column_width * char_width,
                                 *num_content_lines as u32 * line_height,
                             );
 
@@ -279,10 +279,10 @@ pub fn render(
                 // image of one file. And img is our multi-column wide final output image.
                 for line in 0..num_content_lines as u32 {
                     let (x_offset, line_y) = calc_offsets(lines_so_far + line);
-                    for x in 0..column_width {
+                    for x in 0..column_width * char_width {
                         for height in 0..line_height {
                             let pix = sub_img.get_pixel(x, line * line_height + height);
-                            img.put_pixel(x_offset + x, line_y + height, *pix);
+                            img.put_pixel(x_offset * char_width + x, line_y + height, *pix);
                         }
                     }
                 }
