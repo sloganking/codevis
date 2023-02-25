@@ -76,6 +76,17 @@ fn various_renders() {
         opts,
     )
     .unwrap();
+
+    opts.readable = true;
+    codevis::render(
+        &paths,
+        prodash::progress::Discard,
+        &AtomicBool::default(),
+        &ss,
+        &ts,
+        opts,
+    )
+    .unwrap();
 }
 
 #[test]
