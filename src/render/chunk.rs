@@ -3,7 +3,7 @@ use bstr::ByteSlice;
 use image::{ImageBuffer, Rgb};
 use std::ops::{Deref, DerefMut};
 use syntect::highlighting::{Color, Style};
-use unifont_bitmap::{Bitmap, Unifont};
+use unifont_bitmap::Unifont;
 
 /// The result of processing a chunk.
 pub struct Outcome {
