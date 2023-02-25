@@ -21,6 +21,7 @@ pub fn render(
     Options {
         column_width,
         line_height,
+        readable,
         target_aspect_ratio,
         threads,
         fg_color,
@@ -38,6 +39,15 @@ pub fn render(
     // unused for now
     // could be used to make a "rolling code" animation
     let start = std::time::Instant::now();
+
+    let mut line_height = line_height;
+    let mut char_width = 1;
+    if readable {
+        line_height = 16;
+        char_width = 8;
+    }
+    let line_height = line_height;
+    let char_width = char_width;
 
     //> read files (for /n counting)
     let (content, total_line_count, num_ignored) = {
@@ -74,7 +84,7 @@ pub fn render(
         required_columns,
     } = crate::render::dimension::compute(
         target_aspect_ratio,
-        column_width,
+        column_width * char_width,
         total_line_count,
         line_height,
         force_full_columns,
@@ -152,6 +162,7 @@ pub fn render(
                 chunk::Context {
                     column_width,
                     line_height,
+                    char_width,
                     total_line_count,
                     highlight_truncated_lines,
                     line_num,
@@ -161,6 +172,7 @@ pub fn render(
                     file_index,
                     color_modulation,
                     tab_spaces,
+                    readable,
                 },
             )?;
             longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
@@ -210,7 +222,7 @@ pub fn render(
 
                             // create an image that fits one column
                             let mut img = RgbImage::new(
-                                column_width,
+                                column_width * char_width,
                                 *num_content_lines as u32 * line_height,
                             );
 
@@ -224,6 +236,7 @@ pub fn render(
                                 chunk::Context {
                                     column_width,
                                     line_height,
+                                    char_width,
                                     total_line_count,
                                     highlight_truncated_lines,
                                     line_num: 0,
@@ -233,6 +246,7 @@ pub fn render(
                                     file_index,
                                     color_modulation,
                                     tab_spaces,
+                                    readable,
                                 },
                             )?;
                             ttx.send((img, out, *num_content_lines, *lines_so_far))?;
@@ -257,10 +271,10 @@ pub fn render(
                 // image of one file. And img is our multi-column wide final output image.
                 for line in 0..num_content_lines as u32 {
                     let (x_offset, line_y) = calc_offsets(lines_so_far + line);
-                    for x in 0..column_width {
+                    for x in 0..column_width * char_width {
                         for height in 0..line_height {
                             let pix = sub_img.get_pixel(x, line * line_height + height);
-                            img.put_pixel(x_offset + x, line_y + height, *pix);
+                            img.put_pixel(x_offset * char_width + x, line_y + height, *pix);
                         }
                     }
                 }
@@ -283,9 +297,13 @@ pub fn render(
             calc_offsets(line_num, lines_per_column, column_width, line_height);
         let background = background.unwrap_or(Rgb([0, 0, 0]));
 
-        for cur_line_x in 0..column_width {
+        for cur_line_x in 0..column_width * char_width {
             for y_pos in cur_y..cur_y + line_height {
-                img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, background);
+                img.put_pixel(
+                    cur_column_x_offset * char_width + cur_line_x,
+                    y_pos,
+                    background,
+                );
             }
         }
         line_num += 1;

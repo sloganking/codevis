@@ -187,6 +187,7 @@ dependencies = [
  "prodash",
  "signal-hook",
  "syntect",
+ "unifont-bitmap",
 ]
 
 [[package]]
@@ -1154,6 +1155,17 @@ name = "unicode-width"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
+
+[[package]]
+name = "unifont-bitmap"
+version = "1.0.0+unifont-14.0.01"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "836143529d8e332f71df6f8f42e311af5453d368828336c4711f798d4cd9469d"
+dependencies = [
+ "byteorder",
+ "flate2",
+ "once_cell",
+]
 
 [[package]]
 name = "version_check"

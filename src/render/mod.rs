@@ -59,6 +59,9 @@ pub struct Options<'a> {
     pub column_width: u32,
     /// How many pixels high each line is.
     pub line_height: u32,
+    /// Whether to render the image in a readable way.
+    pub readable: bool,
+
     pub target_aspect_ratio: f64,
 
     /// The number of threads to use for rendering.
@@ -86,6 +89,7 @@ impl Default for Options<'_> {
         Options {
             column_width: 100,
             line_height: 2,
+            readable: false,
             target_aspect_ratio: 16. / 9.,
             threads: num_cpus::get(),
             highlight_truncated_lines: false,

@@ -19,12 +19,16 @@ pub(crate) fn compute(
     let mut last_checked_aspect_ratio: f64 = f64::MAX;
     let mut last_column_line_limit = lines_per_column;
     let mut required_columns;
-    let mut cur_aspect_ratio: f64 =
-        column_width as f64 * total_line_count as f64 / (lines_per_column as f64 * 2.0);
 
     // determine maximum aspect ratios
-    let tallest_aspect_ratio = column_width as f64 / total_line_count as f64 * 2.0;
-    let widest_aspect_ratio = total_line_count as f64 * column_width as f64 / 2.0;
+    // the width of one column, divided by the combined height of all the lines.
+    let tallest_aspect_ratio = column_width as f64 / (total_line_count as f64 * line_height as f64);
+    // the combined width of all the columns, divided by the height of one line.
+    let widest_aspect_ratio = (column_width as f64 * total_line_count as f64) / line_height as f64;
+
+    // start at widest possible aspect ratio.
+    // This will later be made taller until the closest aspect ratio to the target is found.
+    let mut cur_aspect_ratio = widest_aspect_ratio;
 
     if target_aspect_ratio <= tallest_aspect_ratio {
         // use tallest possible aspect ratio

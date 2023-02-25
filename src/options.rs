@@ -64,6 +64,10 @@ pub struct Args {
     #[clap(long, default_value_t = 2, help_heading = "IMAGE")]
     pub line_height_pixels: u32,
 
+    /// Whether the text should be rendered in a readable font.
+    #[clap(long, conflicts_with("fg_pixel_color"), help_heading = "IMAGE")]
+    pub readable: bool,
+
     /// The width side of the desired image aspect.
     #[clap(long, default_value_t = 16.0, help_heading = "IMAGE")]
     pub aspect_width: f64,
