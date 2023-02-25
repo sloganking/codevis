@@ -161,7 +161,7 @@ where
 
                 if chr == ' ' || chr == '\n' || chr == '\r' {
                     if readable {
-                        put_char_in_image(
+                        put_readable_char_in_image(
                             ' ',
                             &mut unifont,
                             cur_column_x_offset + cur_line_x * char_width,
@@ -193,7 +193,7 @@ where
                         }
 
                         if readable {
-                            put_char_in_image(
+                            put_readable_char_in_image(
                                 ' ',
                                 &mut unifont,
                                 cur_column_x_offset + cur_line_x * char_width,
@@ -218,7 +218,7 @@ where
                         }
                     }
                 } else if readable {
-                    put_char_in_image(
+                    put_readable_char_in_image(
                         chr,
                         &mut unifont,
                         cur_column_x_offset + cur_line_x * char_width,
@@ -247,7 +247,7 @@ where
         // Fill the rest of the line with the background color.
         if readable {
             while cur_line_x < column_width {
-                put_char_in_image(
+                put_readable_char_in_image(
                     ' ',
                     &mut unifont,
                     cur_column_x_offset + cur_line_x * char_width,
@@ -283,7 +283,7 @@ where
     })
 }
 
-fn put_char_in_image<C>(
+fn put_readable_char_in_image<C>(
     chr: char,
     unifont: &mut Unifont,
     img_x: u32,
