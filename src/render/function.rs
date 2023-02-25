@@ -76,9 +76,6 @@ pub fn render(
         );
     }
 
-    println!("line height = {}", line_height);
-    println!("char width = {}", char_width);
-
     // determine number and height of columns closest to desired aspect ratio
     let Dimension {
         imgx,
@@ -93,11 +90,6 @@ pub fn render(
         force_full_columns,
         progress.add_child("determine dimensions"),
     )?;
-
-    println!(
-        "Rendering {} lines in {} columns ({} lines per column)",
-        total_line_count, required_columns, lines_per_column
-    );
 
     let num_pixels = {
         let channel_count = Rgb::<u8>::CHANNEL_COUNT;
