@@ -1,6 +1,6 @@
 [package]
 name = "codevis"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2021"
 description = "A tool for turning your code into one large image"
 license = "MIT"
@@ -19,7 +19,14 @@ doctest = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-prodash = { version = "20.0.0", features = ["render-line", "render-line-crossterm", "signal-hook", "render-line-autoconfigure", "progress-tree", "unit-bytes"] }
+prodash = { version = "20.0.0", features = [
+    "render-line",
+    "render-line-crossterm",
+    "signal-hook",
+    "render-line-autoconfigure",
+    "progress-tree",
+    "unit-bytes",
+] }
 memmap2 = "0.5.7"
 num_cpus = "1.13.1"
 flume = { version = "0.10.14", default-features = false }
