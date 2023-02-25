@@ -125,7 +125,7 @@ where
         let mut cur_line_x = 0;
 
         for (style, region) in regions {
-            if cur_line_x >= column_width {
+            if cur_line_x >= column_width * char_width {
                 break;
             }
             if region.is_empty() {
@@ -133,7 +133,7 @@ where
             }
 
             for chr in region.chars() {
-                if cur_line_x >= column_width {
+                if cur_line_x >= column_width * char_width {
                     break;
                 }
 
@@ -172,16 +172,22 @@ where
                         );
                     } else {
                         // Fill the char space with a solid color.
-                        for y_pos in cur_y..cur_y + line_height {
-                            img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
-                        }
-                        cur_line_x += 1;
+                        let img_x = cur_column_x_offset + cur_line_x;
+                        put_solid_char_in_image(
+                            img_x,
+                            cur_y,
+                            img,
+                            *background,
+                            line_height,
+                            char_width,
+                            &mut cur_line_x,
+                        );
                     }
                 } else if chr == '\t' {
                     let spaces_to_add = tab_spaces - (cur_line_x % tab_spaces);
 
                     for _ in 0..spaces_to_add {
-                        if cur_line_x >= column_width {
+                        if cur_line_x >= column_width * char_width {
                             break;
                         }
 
@@ -198,10 +204,16 @@ where
                             );
                         } else {
                             // Fill the char space with a solid color.
-                            for y_pos in cur_y..cur_y + line_height {
-                                img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
-                            }
-                            cur_line_x += 1;
+                            let img_x = cur_column_x_offset + cur_line_x;
+                            put_solid_char_in_image(
+                                img_x,
+                                cur_y,
+                                img,
+                                *background,
+                                line_height,
+                                char_width,
+                                &mut cur_line_x,
+                            );
                         }
                     }
                 } else {
@@ -218,21 +230,22 @@ where
                         );
                     } else {
                         // Fill the char space with a solid color.
-                        for y_pos in cur_y..cur_y + line_height {
-                            // println!(
-                            //     "filling pixel: {}, {}",
-                            //     cur_column_x_offset + cur_line_x,
-                            //     y_pos
-                            // );
-                            img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, char_color);
-                        }
-                        cur_line_x += 1;
+                        let img_x = cur_column_x_offset + cur_line_x;
+                        put_solid_char_in_image(
+                            img_x,
+                            cur_y,
+                            img,
+                            char_color,
+                            line_height,
+                            char_width,
+                            &mut cur_line_x,
+                        );
                     }
                 }
             }
         }
 
-        while cur_line_x < column_width {
+        while cur_line_x < column_width * char_width {
             if readable {
                 put_char_in_image(
                     ' ',
@@ -246,10 +259,16 @@ where
                 );
             } else {
                 // Fill the char space with a solid color.
-                for y_pos in cur_y..cur_y + line_height {
-                    img.put_pixel(cur_column_x_offset + cur_line_x, y_pos, *background);
-                }
-                cur_line_x += 1;
+                let img_x = cur_column_x_offset + cur_line_x;
+                put_solid_char_in_image(
+                    img_x,
+                    cur_y,
+                    img,
+                    *background,
+                    line_height,
+                    char_width,
+                    &mut cur_line_x,
+                );
             }
         }
 
@@ -319,6 +338,30 @@ fn put_char_in_image<C>(
     } else {
         *cur_line_x += 1;
     }
+}
+
+fn put_solid_char_in_image<C>(
+    img_x: u32,
+    img_y: u32,
+    img: &mut ImageBuffer<Rgb<u8>, C>,
+    color: Rgb<u8>,
+    line_height: u32,
+    char_width: u32,
+    cur_line_x: &mut u32,
+) where
+    C: Deref<Target = [u8]>,
+    C: DerefMut,
+{
+    // println!("placeing char");
+    // Fill the char space with a solid color.
+    for y_pos in img_y..img_y + line_height {
+        // println!("placing y");
+        for x_pos in img_x..img_x + char_width {
+            // println!("placing x");
+            img.put_pixel(x_pos, y_pos, color);
+        }
+    }
+    *cur_line_x += char_width;
 }
 
 fn default_bg_color(background: Option<Rgb<u8>>) -> Style {
