@@ -258,11 +258,11 @@ fn put_char_in_image<C>(
 
             // if not in image bounds
             if pixel_x >= img.width() || pixel_y >= img.height() {
-                println!(
-                    "Spipping pixel. out of bounds: {}, {}",
-                    img_x + x,
-                    img_y + y as u32
-                );
+                // println!(
+                //     "Skipping pixel. out of bounds: {}, {}",
+                //     img_x + x,
+                //     img_y + y as u32
+                // );
                 continue;
             } else {
                 // set pixel in image
