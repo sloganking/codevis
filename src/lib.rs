@@ -8,7 +8,7 @@ pub mod render;
 pub use render::function::render;
 
 pub fn unicode_content(
-    path: &Path,
+    search_path: &Path,
     ignore_extensions: &[OsString],
     mut progress: impl Progress,
     should_interrupt: &AtomicBool,
@@ -26,7 +26,7 @@ pub fn unicode_content(
 
     let mut paths = Vec::new();
     let mut ignored = 0;
-    for entry in ignore::Walk::new(path) {
+    for entry in ignore::Walk::new(search_path) {
         if should_interrupt.load(Ordering::Relaxed) {
             bail!("Cancelled by user")
         }
@@ -43,7 +43,7 @@ pub fn unicode_content(
         }
         if let Ok(content) = std::fs::read_to_string(path) {
             content_progress.inc_by(content.len());
-            paths.push((path.to_owned(), content));
+            paths.push((path.strip_prefix(search_path).unwrap().to_owned(), content));
         }
     }
 
