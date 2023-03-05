@@ -22,6 +22,7 @@ pub fn render(
         column_width,
         line_height,
         readable,
+        show_filenames,
         target_aspect_ratio,
         threads,
         fg_color,
@@ -75,6 +76,10 @@ pub fn render(
             content.len()
         );
     }
+
+    // if show_filenames {
+    //     total_line_count += content.len();
+    // }
 
     // determine number and height of columns closest to desired aspect ratio
     let Dimension {

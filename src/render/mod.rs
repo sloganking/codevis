@@ -62,6 +62,9 @@ pub struct Options<'a> {
     /// Whether to render the image in a readable way.
     pub readable: bool,
 
+    /// Whether or not to write the file path and name at the top of each file.
+    pub show_filenames: bool,
+
     pub target_aspect_ratio: f64,
 
     /// The number of threads to use for rendering.
@@ -90,6 +93,7 @@ impl Default for Options<'_> {
             column_width: 100,
             line_height: 2,
             readable: false,
+            show_filenames: false,
             target_aspect_ratio: 16. / 9.,
             threads: num_cpus::get(),
             highlight_truncated_lines: false,

@@ -98,6 +98,7 @@ fn main() -> anyhow::Result<()> {
                 column_width: args.column_width_pixels,
                 line_height: args.line_height_pixels,
                 readable: args.readable,
+                show_filenames: args.show_filenames,
                 target_aspect_ratio: args.aspect_width / args.aspect_height,
                 threads: args.threads,
                 highlight_truncated_lines: args.highlight_truncated_lines,
