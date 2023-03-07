@@ -76,49 +76,52 @@ where
     let mut unifont = Unifont::open();
 
     // write the filename
+    if show_filenames {
+        // figure out where in the image to write
+        let actual_line = line_num % total_line_count;
+        let (cur_column_x_offset, cur_y) = calc_offsets(
+            actual_line,
+            lines_per_column,
+            column_width * char_width,
+            line_height,
+        );
 
-    let actual_line = line_num % total_line_count;
-    let (cur_column_x_offset, cur_y) = calc_offsets(
-        actual_line,
-        lines_per_column,
-        column_width * char_width,
-        line_height,
-    );
-    let background = Rgb([0, 0, 0]);
-    let char_color = Rgb([255, 255, 255]);
-    let mut cur_line_x = 0;
-    for chr in filepath.to_str().unwrap().chars() {
-        if readable {
-            put_readable_char_in_image(
-                chr,
-                &mut unifont,
-                cur_column_x_offset + cur_line_x * char_width,
-                cur_y,
-                img,
-                &background,
-                &char_color,
-                &mut cur_line_x,
-            );
-        } else {
-            // Fill the char space with a solid color.
-            let img_x = cur_column_x_offset + cur_line_x;
-            put_solid_char_in_image(
-                img_x,
-                cur_y,
-                img,
-                char_color,
-                line_height,
-                char_width,
-                &mut cur_line_x,
-            );
+        // write filename on image
+        let background = Rgb([0, 0, 0]);
+        let char_color = Rgb([255, 255, 255]);
+        let mut cur_line_x = 0;
+        for chr in filepath.to_str().unwrap().chars() {
+            if readable {
+                put_readable_char_in_image(
+                    chr,
+                    &mut unifont,
+                    cur_column_x_offset + cur_line_x * char_width,
+                    cur_y,
+                    img,
+                    &background,
+                    &char_color,
+                    &mut cur_line_x,
+                );
+            } else {
+                // Fill the char space with a solid color.
+                let img_x = cur_column_x_offset + cur_line_x;
+                put_solid_char_in_image(
+                    img_x,
+                    cur_y,
+                    img,
+                    char_color,
+                    line_height,
+                    char_width,
+                    &mut cur_line_x,
+                );
+            }
         }
+        line_num += 1;
     }
 
-    line_num += 1;
-
+    // render all lines in `content` to image
     let mut longest_line_in_chars = 0;
     let mut background = None::<Rgb<u8>>;
-
     for line in content.as_bytes().lines_with_terminator() {
         let (line, truncated_line) = {
             let line = line.to_str().expect("UTF-8 was source");
