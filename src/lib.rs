@@ -43,7 +43,7 @@ pub fn unicode_content(
         }
         if let Ok(content) = std::fs::read_to_string(path) {
             content_progress.inc_by(content.len());
-            paths.push((path.strip_prefix(search_path).unwrap().to_owned(), content));
+            paths.push((path.to_owned(), content));
         }
     }
 
