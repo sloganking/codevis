@@ -50,6 +50,8 @@ pub fn render(
     let line_height = line_height;
     let char_width = char_width;
 
+    let file_count = content.len();
+
     //> read files (for /n counting)
     let (content, total_line_count, num_ignored) = {
         let mut out = Vec::with_capacity(content.len());
@@ -77,9 +79,13 @@ pub fn render(
         );
     }
 
-    // if show_filenames {
-    //     total_line_count += content.len();
-    // }
+    // add lines if displaying filenames.
+    let mut total_line_count = total_line_count;
+    if show_filenames {
+        total_line_count += content.len() as u32;
+    }
+    // re-make immutable
+    let total_line_count = total_line_count;
 
     // determine number and height of columns closest to desired aspect ratio
     let Dimension {
@@ -161,6 +167,7 @@ pub fn render(
                 progress.info(format!("{path:?}"))
             }
             let out = chunk::process(
+                &path,
                 content,
                 &mut img,
                 |line| highlighter.highlight_line(line, ss),
@@ -178,6 +185,7 @@ pub fn render(
                     color_modulation,
                     tab_spaces,
                     readable,
+                    show_filenames,
                 },
             )?;
             longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
@@ -225,16 +233,20 @@ pub fn render(
                                 }
                             }
 
+                            let img_height = if show_filenames {
+                                (*num_content_lines as u32 * line_height) + line_height * 100
+                            } else {
+                                *num_content_lines as u32 * line_height
+                            };
+
                             // create an image that fits one column
-                            let mut img = RgbImage::new(
-                                column_width * char_width,
-                                *num_content_lines as u32 * line_height,
-                            );
+                            let mut img = RgbImage::new(column_width * char_width, img_height);
 
                             if display_to_be_processed_file {
                                 progress.info(format!("{path:?}"))
                             }
                             let out = chunk::process(
+                                &path,
                                 content,
                                 &mut img,
                                 |line| highlighter.highlight_line(line, ss),
@@ -252,6 +264,7 @@ pub fn render(
                                     color_modulation,
                                     tab_spaces,
                                     readable,
+                                    show_filenames,
                                 },
                             )?;
                             ttx.send((img, out, *num_content_lines, *lines_so_far))?;
