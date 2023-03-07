@@ -190,6 +190,9 @@ pub fn render(
             )?;
             longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
             line_num += num_content_lines as u32;
+            if show_filenames {
+                line_num += 1
+            };
             line_progress.inc_by(num_content_lines);
             background = out.background;
         }
@@ -299,6 +302,9 @@ pub fn render(
 
                 line_progress.inc_by(num_content_lines);
                 line_num += num_content_lines as u32;
+                if show_filenames {
+                    line_num += 1
+                };
                 progress.inc();
                 if should_interrupt.load(Ordering::Relaxed) {
                     bail!("Cancelled by user")
