@@ -7,12 +7,17 @@ use std::sync::atomic::{AtomicBool, Ordering};
 pub mod render;
 pub use render::function::render;
 
+pub struct DirContents {
+    pub parent_dir: PathBuf,
+    pub children_content: Vec<(PathBuf, String)>,
+}
+
 pub fn unicode_content(
     search_path: &Path,
     ignore_extensions: &[OsString],
     mut progress: impl Progress,
     should_interrupt: &AtomicBool,
-) -> anyhow::Result<(Vec<(PathBuf, String)>, usize)> {
+) -> anyhow::Result<(DirContents, usize)> {
     let start = std::time::Instant::now();
     progress.init(None, Some(prodash::unit::label("files")));
     let mut content_progress = progress.add_child("content");
@@ -43,11 +48,17 @@ pub fn unicode_content(
         }
         if let Ok(content) = std::fs::read_to_string(path) {
             content_progress.inc_by(content.len());
-            paths.push((path.strip_prefix(search_path).unwrap().to_owned(), content));
+            paths.push((path.to_owned(), content));
         }
     }
 
     progress.show_throughput(start);
     content_progress.show_throughput(start);
-    Ok((paths, ignored))
+    Ok((
+        DirContents {
+            parent_dir: search_path.to_path_buf(),
+            children_content: paths,
+        },
+        ignored,
+    ))
 }
