@@ -144,6 +144,12 @@ pub fn render(
         .unwrap_or(threads)
         .clamp(1, num_cpus::get());
     let (mut line_num, longest_line_chars, background) = if threads < 2 {
+        // single-threaded rendering overview:
+        //
+        // Sqeuentially iterates over the contents of each file to render.
+        // Each time rendering it's text to the correct location in the final image.
+        // No intermediate images are used like in multi-threaded rendering.
+
         let mut line_num: u32 = 0;
         let mut longest_line_chars = 0;
         let mut background = None;
