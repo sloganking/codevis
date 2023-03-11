@@ -2,18 +2,18 @@ use crate::render::chunk::calc_offsets;
 use crate::render::Cache;
 use crate::render::Dimension;
 use crate::render::{chunk, Options};
+use crate::DirContents;
 use anyhow::{bail, Context};
 use image::{ImageBuffer, Pixel, Rgb, RgbImage};
 use memmap2::MmapMut;
 use prodash::Progress;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
 
 /// Render the given files to an image. Using the given syntax, theme and render options.
 pub fn render(
-    content: &[(PathBuf, String)],
+    dir_content: &DirContents,
     mut progress: impl Progress,
     should_interrupt: &AtomicBool,
     ss: &SyntaxSet,
@@ -54,11 +54,11 @@ pub fn render(
 
     //> read files (for /n counting)
     let (content, total_line_count, num_ignored) = {
-        let mut out = Vec::with_capacity(content.len());
+        let mut out = Vec::with_capacity(dir_content.children_content.len());
         let mut lines = 0;
         let mut num_ignored = 0;
         let mut lines_so_far = 0u32;
-        for (path, content) in content {
+        for (path, content) in &dir_content.children_content {
             let num_content_lines = content.lines().count();
             lines += num_content_lines;
             if ignore_files_without_syntax && ss.find_syntax_for_file(path)?.is_none() {
@@ -164,7 +164,8 @@ pub fn render(
             }
 
             if display_to_be_processed_file {
-                progress.info(format!("{path:?}"))
+                let relative_path = path.strip_prefix(&dir_content.parent_dir).unwrap();
+                progress.info(format!("{relative_path:?}"))
             }
             let out = chunk::process(
                 &path,
@@ -246,7 +247,9 @@ pub fn render(
                             let mut img = RgbImage::new(column_width * char_width, img_height);
 
                             if display_to_be_processed_file {
-                                progress.info(format!("{path:?}"))
+                                let relative_path =
+                                    path.strip_prefix(&dir_content.parent_dir).unwrap();
+                                progress.info(format!("{relative_path:?}"))
                             }
                             let out = chunk::process(
                                 &path,

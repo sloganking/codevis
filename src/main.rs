@@ -42,7 +42,7 @@ fn main() -> anyhow::Result<()> {
     );
 
     // determine files to render
-    let (mut paths, mut ignored) = codevis::unicode_content(
+    let (mut dir_contents, mut ignored) = codevis::unicode_content(
         &args.input_dir,
         &args.ignore_extension,
         progress.add_child("search unicode files"),
@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
     // filter extensions if there is a whitelist
     if !args.whitelist_extension.is_empty() {
         let mut whitelist_ignored: usize = 0;
-        paths.retain(|(path, _)| {
+        dir_contents.children_content.retain(|(path, _)| {
             path.extension().map_or(false, |ext| {
                 if args.whitelist_extension.contains(&ext.to_owned()) {
                     true
@@ -89,7 +89,7 @@ fn main() -> anyhow::Result<()> {
         let start = std::time::Instant::now();
 
         let img = codevis::render(
-            &paths,
+            &dir_contents,
             progress.add_child("render"),
             &should_interrupt,
             &ss,
