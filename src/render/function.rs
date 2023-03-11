@@ -161,12 +161,12 @@ pub fn render(
                 }
             }
 
+            let relative_path = path.strip_prefix(&dir_content.parent_dir).unwrap();
             if display_to_be_processed_file {
-                let relative_path = path.strip_prefix(&dir_content.parent_dir).unwrap();
                 progress.info(format!("{relative_path:?}"))
             }
             let out = chunk::process(
-                &path,
+                &relative_path,
                 content,
                 &mut img,
                 |line| highlighter.highlight_line(line, ss),
@@ -244,13 +244,12 @@ pub fn render(
                             // create an image that fits one column
                             let mut img = RgbImage::new(column_width * char_width, img_height);
 
+                            let relative_path = path.strip_prefix(&dir_content.parent_dir).unwrap();
                             if display_to_be_processed_file {
-                                let relative_path =
-                                    path.strip_prefix(&dir_content.parent_dir).unwrap();
                                 progress.info(format!("{relative_path:?}"))
                             }
                             let out = chunk::process(
-                                &path,
+                                &relative_path,
                                 content,
                                 &mut img,
                                 |line| highlighter.highlight_line(line, ss),
