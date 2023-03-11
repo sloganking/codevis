@@ -50,8 +50,6 @@ pub fn render(
     let line_height = line_height;
     let char_width = char_width;
 
-    let file_count = content.len();
-
     //> read files (for /n counting)
     let (content, total_line_count, num_ignored) = {
         let mut out = Vec::with_capacity(dir_content.children_content.len());
