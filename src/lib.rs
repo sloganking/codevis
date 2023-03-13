@@ -4,11 +4,12 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+pub mod render;
+pub use render::function::render;
+
 // The number of lines used for displaying filenames at
 // the top of files.
 const FILENAME_LINE_COUNT: u32 = 1;
-pub mod render;
-pub use render::function::render;
 
 pub struct DirContents {
     pub parent_dir: PathBuf,
