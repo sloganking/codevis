@@ -77,6 +77,12 @@ where
 
     // write the filename
     if show_filenames {
+        // get background color
+        let style = highlight(" ")?[0].0;
+        let mut background = None::<Rgb<u8>>;
+        let background =
+            background.get_or_insert_with(|| bg_color.to_rgb(style, file_index, color_modulation));
+
         // figure out where in the image to write
         let actual_line = line_num % total_line_count;
         let (cur_column_x_offset, cur_y) = calc_offsets(
@@ -87,7 +93,6 @@ where
         );
 
         // write filename on image
-        let background = Rgb([0, 0, 0]);
         let char_color = Rgb([255, 255, 255]);
         let mut cur_line_x = 0;
         for chr in filepath.to_str().unwrap().chars() {
@@ -116,6 +121,37 @@ where
                 );
             }
         }
+
+        // Fill the rest of the line with the background color.
+        if readable {
+            while cur_line_x < column_width {
+                put_readable_char_in_image(
+                    ' ',
+                    &mut unifont,
+                    cur_column_x_offset + cur_line_x * char_width,
+                    cur_y,
+                    img,
+                    background,
+                    background,
+                    &mut cur_line_x,
+                );
+            }
+        } else {
+            while cur_line_x < column_width * char_width {
+                // Fill the char space with a solid color.
+                let img_x = cur_column_x_offset + cur_line_x;
+                put_solid_char_in_image(
+                    img_x,
+                    cur_y,
+                    img,
+                    *background,
+                    line_height,
+                    char_width,
+                    &mut cur_line_x,
+                );
+            }
+        }
+
         line_num += 1;
     }
 
