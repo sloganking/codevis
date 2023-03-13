@@ -2,6 +2,7 @@ use crate::render::{BgColor, FgColor};
 use bstr::ByteSlice;
 use image::{ImageBuffer, Rgb};
 use std::ops::{Deref, DerefMut};
+use std::path::Path;
 use syntect::highlighting::{Color, Style};
 use unifont_bitmap::Unifont;
 
@@ -29,6 +30,7 @@ pub struct Context {
     pub color_modulation: f32,
     pub tab_spaces: u32,
     pub readable: bool,
+    pub show_filenames: bool,
 }
 
 /// Return the `(x, y)` offsets to apply to the given line, to wrap columns of lines into the
@@ -46,6 +48,7 @@ pub fn calc_offsets(
 }
 
 pub fn process<C>(
+    filepath: &Path,
     content: &str,
     img: &mut ImageBuffer<Rgb<u8>, C>,
     mut highlight: impl FnMut(&str) -> Result<Vec<(Style, &str)>, syntect::Error>,
@@ -63,6 +66,7 @@ pub fn process<C>(
         color_modulation,
         tab_spaces,
         readable,
+        show_filenames,
     }: Context,
 ) -> anyhow::Result<Outcome>
 where
@@ -71,6 +75,87 @@ where
 {
     let mut unifont = Unifont::open();
 
+    // write the filename
+    if show_filenames {
+        // get background color
+        let style = highlight(" ")?[0].0;
+        let mut background = None::<Rgb<u8>>;
+        let background =
+            background.get_or_insert_with(|| bg_color.to_rgb(style, file_index, color_modulation));
+
+        // figure out where in the image to write
+        let actual_line = line_num % total_line_count;
+        let (cur_column_x_offset, cur_y) = calc_offsets(
+            actual_line,
+            lines_per_column,
+            column_width * char_width,
+            line_height,
+        );
+
+        // write filename on image
+        let char_color = Rgb([255, 255, 255]);
+        let mut cur_line_x = 0;
+        for chr in filepath.to_str().unwrap().chars() {
+            if readable {
+                put_readable_char_in_image(
+                    chr,
+                    &mut unifont,
+                    cur_column_x_offset + cur_line_x * char_width,
+                    cur_y,
+                    img,
+                    &background,
+                    &char_color,
+                    &mut cur_line_x,
+                );
+            } else {
+                // Fill the char space with a solid color.
+                let img_x = cur_column_x_offset + cur_line_x;
+                put_solid_char_in_image(
+                    img_x,
+                    cur_y,
+                    img,
+                    char_color,
+                    line_height,
+                    char_width,
+                    &mut cur_line_x,
+                );
+            }
+        }
+
+        // Fill the rest of the line with the background color.
+        if readable {
+            while cur_line_x < column_width {
+                put_readable_char_in_image(
+                    ' ',
+                    &mut unifont,
+                    cur_column_x_offset + cur_line_x * char_width,
+                    cur_y,
+                    img,
+                    background,
+                    background,
+                    &mut cur_line_x,
+                );
+            }
+        } else {
+            while cur_line_x < column_width * char_width {
+                // Fill the char space with a solid color.
+                let img_x = cur_column_x_offset + cur_line_x;
+                put_solid_char_in_image(
+                    img_x,
+                    cur_y,
+                    img,
+                    *background,
+                    line_height,
+                    char_width,
+                    &mut cur_line_x,
+                );
+            }
+        }
+
+        line_num += 1;
+    }
+
+    // render all lines in `content` to image
     let mut longest_line_in_chars = 0;
     let mut background = None::<Rgb<u8>>;
     for line in content.as_bytes().lines_with_terminator() {

@@ -3,6 +3,7 @@ use crate::render::Cache;
 use crate::render::Dimension;
 use crate::render::{chunk, Options};
 use crate::DirContents;
+use crate::FILENAME_LINE_COUNT;
 use anyhow::{bail, Context};
 use image::{ImageBuffer, Pixel, Rgb, RgbImage};
 use memmap2::MmapMut;
@@ -22,6 +23,7 @@ pub fn render(
         column_width,
         line_height,
         readable,
+        show_filenames,
         target_aspect_ratio,
         threads,
         fg_color,
@@ -64,6 +66,9 @@ pub fn render(
             } else {
                 out.push(((path, content), num_content_lines, lines_so_far));
                 lines_so_far += num_content_lines as u32;
+                if show_filenames {
+                    lines_so_far += FILENAME_LINE_COUNT;
+                }
             }
         }
         (out, lines as u32, num_ignored)
@@ -75,6 +80,14 @@ pub fn render(
             content.len()
         );
     }
+
+    // add lines if displaying filenames.
+    let mut total_line_count = total_line_count;
+    if show_filenames {
+        total_line_count += content.len() as u32 * FILENAME_LINE_COUNT;
+    }
+    // re-make immutable
+    let total_line_count = total_line_count;
 
     // determine number and height of columns closest to desired aspect ratio
     let Dimension {
@@ -135,6 +148,12 @@ pub fn render(
         .unwrap_or(threads)
         .clamp(1, num_cpus::get());
     let (mut line_num, longest_line_chars, background) = if threads < 2 {
+        // single-threaded rendering overview:
+        //
+        // Sqeuentially iterates over the contents of each file to render.
+        // Each time rendering it's text to the correct location in the final image.
+        // No intermediate images are used like in multi-threaded rendering.
+
         let mut line_num: u32 = 0;
         let mut longest_line_chars = 0;
         let mut background = None;
@@ -152,11 +171,12 @@ pub fn render(
                 }
             }
 
+            let relative_path = path.strip_prefix(&dir_content.parent_dir).unwrap();
             if display_to_be_processed_file {
-                let relative_path = path.strip_prefix(&dir_content.parent_dir).unwrap();
                 progress.info(format!("{relative_path:?}"))
             }
             let out = chunk::process(
+                &relative_path,
                 content,
                 &mut img,
                 |line| highlighter.highlight_line(line, ss),
@@ -174,10 +194,14 @@ pub fn render(
                     color_modulation,
                     tab_spaces,
                     readable,
+                    show_filenames,
                 },
             )?;
             longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
             line_num += num_content_lines as u32;
+            if show_filenames {
+                line_num += FILENAME_LINE_COUNT
+            };
             line_progress.inc_by(num_content_lines);
             background = out.background;
         }
@@ -221,18 +245,22 @@ pub fn render(
                                 }
                             }
 
-                            // create an image that fits one column
-                            let mut img = RgbImage::new(
-                                column_width * char_width,
-                                *num_content_lines as u32 * line_height,
-                            );
+                            let img_height = if show_filenames {
+                                (*num_content_lines as u32 * line_height)
+                                    + line_height * FILENAME_LINE_COUNT
+                            } else {
+                                *num_content_lines as u32 * line_height
+                            };
 
+                            // create an image that fits one column
+                            let mut img = RgbImage::new(column_width * char_width, img_height);
+
+                            let relative_path = path.strip_prefix(&dir_content.parent_dir).unwrap();
                             if display_to_be_processed_file {
-                                let relative_path =
-                                    path.strip_prefix(&dir_content.parent_dir).unwrap();
                                 progress.info(format!("{relative_path:?}"))
                             }
                             let out = chunk::process(
+                                &relative_path,
                                 content,
                                 &mut img,
                                 |line| highlighter.highlight_line(line, ss),
@@ -250,6 +278,7 @@ pub fn render(
                                     color_modulation,
                                     tab_spaces,
                                     readable,
+                                    show_filenames,
                                 },
                             )?;
                             ttx.send((img, out, *num_content_lines, *lines_so_far))?;
@@ -270,9 +299,13 @@ pub fn render(
                     calc_offsets(actual_line, lines_per_column, column_width, line_height)
                 };
 
+                let mut lines_in_sub_img = num_content_lines as u32;
+                if show_filenames {
+                    lines_in_sub_img += FILENAME_LINE_COUNT;
+                }
                 // transfer pixels from sub_img to img. Where sub_img is a 1 column wide
                 // image of one file. And img is our multi-column wide final output image.
-                for line in 0..num_content_lines as u32 {
+                for line in 0..lines_in_sub_img {
                     let (x_offset, line_y) = calc_offsets(lines_so_far + line);
                     for x in 0..column_width * char_width {
                         for height in 0..line_height {
@@ -284,6 +317,9 @@ pub fn render(
 
                 line_progress.inc_by(num_content_lines);
                 line_num += num_content_lines as u32;
+                if show_filenames {
+                    line_num += FILENAME_LINE_COUNT
+                };
                 progress.inc();
                 if should_interrupt.load(Ordering::Relaxed) {
                     bail!("Cancelled by user")
