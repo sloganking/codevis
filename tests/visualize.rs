@@ -37,6 +37,7 @@ fn various_renders() {
         tab_spaces: 4,
         readable: false,
         show_filenames: false,
+        line_nums: false,
     };
     codevis::render(
         &paths,
@@ -121,6 +122,7 @@ fn multi_threading_produces_same_result_as_single_threaded_mode() {
         tab_spaces: 4,
         readable: false,
         show_filenames: false,
+        line_nums: false,
     };
     let expected = codevis::render(
         &paths,

@@ -73,6 +73,10 @@ pub struct Args {
     #[clap(long, help_heading = "IMAGE")]
     pub show_filenames: bool,
 
+    /// Whether to render line numbers.
+    #[clap(long, help_heading = "IMAGE")]
+    pub line_nums: bool,
+
     /// The width side of the desired image aspect.
     #[clap(long, default_value_t = 16.0, help_heading = "IMAGE")]
     pub aspect_width: f64,
