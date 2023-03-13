@@ -172,7 +172,7 @@ dependencies = [
 
 [[package]]
 name = "codevis"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "anyhow",
  "bstr 1.0.1",
