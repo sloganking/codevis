@@ -66,6 +66,9 @@ pub fn render(
             } else {
                 out.push(((path, content), num_content_lines, lines_so_far));
                 lines_so_far += num_content_lines as u32;
+                if show_filenames {
+                    lines_so_far += FILENAME_LINE_COUNT;
+                }
             }
         }
         (out, lines as u32, num_ignored)
@@ -243,7 +246,8 @@ pub fn render(
                             }
 
                             let img_height = if show_filenames {
-                                (*num_content_lines as u32 * line_height) + line_height * 100
+                                (*num_content_lines as u32 * line_height)
+                                    + line_height * FILENAME_LINE_COUNT
                             } else {
                                 *num_content_lines as u32 * line_height
                             };
@@ -295,9 +299,13 @@ pub fn render(
                     calc_offsets(actual_line, lines_per_column, column_width, line_height)
                 };
 
+                let mut lines_in_sub_img = num_content_lines as u32;
+                if show_filenames {
+                    lines_in_sub_img += FILENAME_LINE_COUNT;
+                }
                 // transfer pixels from sub_img to img. Where sub_img is a 1 column wide
                 // image of one file. And img is our multi-column wide final output image.
-                for line in 0..num_content_lines as u32 {
+                for line in 0..lines_in_sub_img {
                     let (x_offset, line_y) = calc_offsets(lines_so_far + line);
                     for x in 0..column_width * char_width {
                         for height in 0..line_height {
