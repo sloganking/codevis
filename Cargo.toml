@@ -1,6 +1,6 @@
 [package]
 name = "codevis"
-version = "0.7.1"
+version = "0.8.0"
 edition = "2021"
 description = "A tool for turning your code into one large image"
 license = "MIT"
