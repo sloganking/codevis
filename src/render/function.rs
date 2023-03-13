@@ -3,6 +3,7 @@ use crate::render::Cache;
 use crate::render::Dimension;
 use crate::render::{chunk, Options};
 use crate::DirContents;
+use crate::FILENAME_LINE_COUNT;
 use anyhow::{bail, Context};
 use image::{ImageBuffer, Pixel, Rgb, RgbImage};
 use memmap2::MmapMut;
@@ -80,7 +81,7 @@ pub fn render(
     // add lines if displaying filenames.
     let mut total_line_count = total_line_count;
     if show_filenames {
-        total_line_count += content.len() as u32;
+        total_line_count += content.len() as u32 * FILENAME_LINE_COUNT;
     }
     // re-make immutable
     let total_line_count = total_line_count;
@@ -196,7 +197,7 @@ pub fn render(
             longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
             line_num += num_content_lines as u32;
             if show_filenames {
-                line_num += 1
+                line_num += FILENAME_LINE_COUNT
             };
             line_progress.inc_by(num_content_lines);
             background = out.background;
@@ -309,7 +310,7 @@ pub fn render(
                 line_progress.inc_by(num_content_lines);
                 line_num += num_content_lines as u32;
                 if show_filenames {
-                    line_num += 1
+                    line_num += FILENAME_LINE_COUNT
                 };
                 progress.inc();
                 if should_interrupt.load(Ordering::Relaxed) {
