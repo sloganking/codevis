@@ -87,7 +87,7 @@ where
     let mut unifont = Unifont::open();
 
     let largest_line_num_width = if line_nums {
-        format!("{}", content.lines().count()).len()
+        format!("{}", content.lines().count()).len() + 1
     } else {
         // We don't need it for rendering.
         // So pass default value.
