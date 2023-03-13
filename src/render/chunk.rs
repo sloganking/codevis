@@ -60,6 +60,12 @@ fn ensure_width(str: String, width: u32) -> String {
     spaces + &str
 }
 
+/// Renders text onto an existing image.
+///
+/// Images of proper dimensions must be pre-allocated before calling this function.
+/// This function can be used to render one file/string of text, to a single image,
+/// or called repeatedly on different files/strings, and passed the same image, to
+/// render different bodies of text in different areas of the same image.
 pub fn process<C>(
     filepath: &Path,
     content: &str,
