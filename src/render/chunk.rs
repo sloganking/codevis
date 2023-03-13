@@ -48,6 +48,9 @@ pub fn calc_offsets(
     )
 }
 
+/// Ensures a string has a minimum number of characters in it by
+/// appending spaces to the beginging of the string if its characters
+/// are too few. This is used for formatting the spacing of line_nums.
 fn ensure_width(str: String, width: u32) -> String {
     let spaces_to_add = width as usize - str.len();
     let mut spaces = String::new();
