@@ -85,6 +85,7 @@ pub struct Options<'a> {
     pub color_modulation: f32,
     /// The number of spaces to use for a tab character.
     pub tab_spaces: u32,
+    pub line_nums: bool,
 }
 
 impl Default for Options<'_> {
@@ -106,6 +107,7 @@ impl Default for Options<'_> {
             display_to_be_processed_file: false,
             color_modulation: 0.3,
             tab_spaces: 4,
+            line_nums: false,
         }
     }
 }

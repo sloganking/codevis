@@ -31,6 +31,7 @@ pub struct Context {
     pub tab_spaces: u32,
     pub readable: bool,
     pub show_filenames: bool,
+    pub line_nums: bool,
 }
 
 /// Return the `(x, y)` offsets to apply to the given line, to wrap columns of lines into the
@@ -45,6 +46,15 @@ pub fn calc_offsets(
         (line_num / lines_per_column) * column_width,
         (line_num % lines_per_column) * line_height,
     )
+}
+
+fn ensure_width(str: String, width: u32) -> String {
+    let spaces_to_add = width as usize - str.len();
+    let mut spaces = String::new();
+    for _ in 0..spaces_to_add {
+        spaces.push(' ');
+    }
+    spaces + &str
 }
 
 pub fn process<C>(
@@ -67,6 +77,7 @@ pub fn process<C>(
         tab_spaces,
         readable,
         show_filenames,
+        line_nums,
     }: Context,
 ) -> anyhow::Result<Outcome>
 where
@@ -74,6 +85,14 @@ where
     C: DerefMut,
 {
     let mut unifont = Unifont::open();
+
+    let largest_line_num_width = if line_nums {
+        format!("{}", content.lines().count()).len()
+    } else {
+        // We don't need it for rendering.
+        // So pass default value.
+        0
+    };
 
     // write the filename
     if show_filenames {
@@ -158,7 +177,10 @@ where
     // render all lines in `content` to image
     let mut longest_line_in_chars = 0;
     let mut background = None::<Rgb<u8>>;
-    for line in content.as_bytes().lines_with_terminator() {
+    for (file_line_num, line) in content.as_bytes().lines_with_terminator().enumerate() {
+        // make file_line_num that of the file.
+        let file_line_num = file_line_num + 1;
+
         let (line, truncated_line) = {
             let line = line.to_str().expect("UTF-8 was source");
             let mut num_chars = 0;
@@ -186,8 +208,6 @@ where
             )
         };
 
-        // println!("line: {:?}", line);
-
         let actual_line = line_num % total_line_count;
         let (cur_column_x_offset, cur_y) = calc_offsets(
             actual_line,
@@ -208,6 +228,46 @@ where
         let background = background
             .get_or_insert_with(|| bg_color.to_rgb(regions[0].0, file_index, color_modulation));
         let mut cur_line_x = 0;
+
+        // draw file_line_num for this line
+        if line_nums {
+            // file_line_num
+
+            let line_num_string =
+                ensure_width(format!("{}", file_line_num), largest_line_num_width as u32) + " ";
+            let file_line_num_char_color = Rgb([255, 255, 255]);
+            for chr in line_num_string.chars() {
+                if readable {
+                    put_readable_char_in_image(
+                        chr,
+                        &mut unifont,
+                        cur_column_x_offset + cur_line_x * char_width,
+                        cur_y,
+                        img,
+                        background,
+                        &file_line_num_char_color,
+                        &mut cur_line_x,
+                    );
+                } else {
+                    let color = if chr == ' ' {
+                        *background
+                    } else {
+                        file_line_num_char_color
+                    };
+                    // Fill the char space with a solid color.
+                    let img_x = cur_column_x_offset + cur_line_x;
+                    put_solid_char_in_image(
+                        img_x,
+                        cur_y,
+                        img,
+                        color,
+                        line_height,
+                        char_width,
+                        &mut cur_line_x,
+                    );
+                }
+            }
+        }
 
         // Draw the line on the image.
         for (style, region) in regions {

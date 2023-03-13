@@ -115,6 +115,7 @@ fn main() -> anyhow::Result<()> {
                 color_modulation: args.color_modulation,
                 ignore_files_without_syntax: args.ignore_files_without_syntax,
                 tab_spaces: args.tab_spaces,
+                line_nums: args.line_nums,
             },
         )?;
         let img_path = if args.theme.len() == 1 {
