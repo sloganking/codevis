@@ -103,10 +103,14 @@ where
         0
     };
 
+    let style = highlight(" ")?[0].0;
+    let initial_forground_color = Rgb([style.foreground.r, style.foreground.g, style.foreground.b]);
+
     // write the filename
     if show_filenames {
         // get background color
-        let style = highlight(" ")?[0].0;
+        // let style = highlight(" ")?[0].0;
+        // println!("style: {:#?}", style);
         let mut background = None::<Rgb<u8>>;
         let background =
             background.get_or_insert_with(|| bg_color.to_rgb(style, file_index, color_modulation));
@@ -121,7 +125,7 @@ where
         );
 
         // write filename on image
-        let char_color = Rgb([255, 255, 255]);
+        // let char_color = Rgb([255, 255, 255]);
         let mut cur_line_x = 0;
         for chr in filepath.to_str().unwrap().chars() {
             if readable {
@@ -132,7 +136,7 @@ where
                     cur_y,
                     img,
                     &background,
-                    &char_color,
+                    &initial_forground_color,
                     &mut cur_line_x,
                 );
             } else {
@@ -142,7 +146,7 @@ where
                     img_x,
                     cur_y,
                     img,
-                    char_color,
+                    initial_forground_color,
                     line_height,
                     char_width,
                     &mut cur_line_x,
@@ -240,11 +244,11 @@ where
 
         // draw file_line_num for this line
         if line_nums {
-            // file_line_num
-
             let line_num_string =
                 ensure_width(format!("{}", file_line_num), largest_line_num_width as u32) + " ";
-            let file_line_num_char_color = Rgb([255, 255, 255]);
+
+            let file_line_num_char_color = initial_forground_color;
+            // let file_line_num_char_color = Rgb([255, 255, 255]);
             for chr in line_num_string.chars() {
                 if readable {
                     put_readable_char_in_image(
