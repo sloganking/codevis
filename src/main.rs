@@ -138,7 +138,7 @@ fn main() -> anyhow::Result<()> {
 
         // save image
         match img {
-            codevis::RenderType::TileCache(_) => todo!(),
+            codevis::RenderType::TileCache(tile_cache) => tile_cache.save_all(),
             codevis::RenderType::MmapImage(img) => {
                 sage_image(
                     img,

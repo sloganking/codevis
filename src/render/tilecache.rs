@@ -52,7 +52,7 @@ impl TileCache {
     }
 
     fn add_tile_to_cache(&mut self, tile: RgbaImage, x: i32, y: i32) {
-        println!("tile cache size: {}", self.cached_tiles.len());
+        // println!("tile cache size: {}", self.cached_tiles.len());
         if let std::collections::hash_map::Entry::Vacant(e) = self.cached_tiles.entry((x, y)) {
             e.insert((self.cached_tile_nonce, tile));
             self.cached_tile_nonce += 1;
