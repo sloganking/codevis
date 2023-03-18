@@ -221,9 +221,14 @@ pub fn render(
         let mut line_num: u32 = 0;
         let mut longest_line_chars = 0;
         let mut background = None;
+        // An atomic integer used to tell threads which file to render next.
+        // Threads read a value and then incrment it.
+        // This is cheaper than creating a channel and sending the content to
+        // render via channel to each thread.
         let file_index = AtomicUsize::default();
+
         std::thread::scope(|scope| -> anyhow::Result<()> {
-            let (ttx, trx) = flume::unbounded();
+            let (ttx, trx) = flume::bounded(threads);
             for tid in 0..threads {
                 scope.spawn({
                     let ttx = ttx.clone();
