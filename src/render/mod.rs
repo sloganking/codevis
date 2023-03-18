@@ -121,3 +121,9 @@ mod chunk;
 
 mod dimension;
 use dimension::Dimension;
+
+//import tilecache
+pub(crate) mod tilecache;
+
+//expore tilecache from tilecache file
+pub use tilecache::TileCache;

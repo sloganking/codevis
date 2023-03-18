@@ -1,4 +1,6 @@
 use anyhow::bail;
+use image::{ImageBuffer, Pixel, Rgb, RgbImage};
+use memmap2::MmapMut;
 use prodash::Progress;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -6,6 +8,51 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 pub mod render;
 pub use render::function::render;
+
+// pub mod tilecache;
+pub use render::tilecache::TileCache;
+
+enum RenderType {
+    TileCache(TileCache),
+    MmapImage(ImageBuffer<Rgb<u8>, MmapMut>),
+    Image(ImageBuffer<Rgb<u8>, Vec<u8>>),
+}
+
+impl RenderType {
+    pub fn new_tilecache(path: PathBuf, img_width: usize) -> Self {
+        Self::TileCache(TileCache::new(path, (img_width / 256) + 2))
+    }
+
+    pub fn new_mmap_image(width: u32, height: u32) -> Self {
+        let channel_count = Rgb::<u8>::CHANNEL_COUNT;
+        let num_pixels = width as usize * height as usize * channel_count as usize;
+
+        let mut mmap_img = ImageBuffer::<Rgb<u8>, _>::from_raw(
+            width,
+            height,
+            MmapMut::map_anon(num_pixels).expect("Failed to allocate memmap"),
+        )
+        .expect("correct size computation above");
+
+        Self::MmapImage(mmap_img)
+    }
+
+    pub fn new_image(width: u32, height: u32) -> Self {
+        Self::Image(RgbImage::new(width, height))
+    }
+
+    fn put_pixel(&mut self, x: i32, y: i32, pixel: Rgb<u8>) {
+        match self {
+            RenderType::TileCache(cache) => {
+                // rgb to rgba
+                let pixel = image::Rgba([pixel[0], pixel[1], pixel[2], 255]);
+                cache.put_pixel(x, y, pixel);
+            }
+            RenderType::MmapImage(img) => img.put_pixel(x as u32, y as u32, pixel),
+            RenderType::Image(img) => img.put_pixel(x as u32, y as u32, pixel),
+        }
+    }
+}
 
 // The number of lines used for displaying filenames at
 // the top of files.
