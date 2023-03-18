@@ -86,6 +86,7 @@ pub struct Options<'a> {
     /// The number of spaces to use for a tab character.
     pub tab_spaces: u32,
     pub line_nums: bool,
+    pub tiles: bool,
 }
 
 impl Default for Options<'_> {
@@ -108,6 +109,7 @@ impl Default for Options<'_> {
             color_modulation: 0.3,
             tab_spaces: 4,
             line_nums: false,
+            tiles: false,
         }
     }
 }

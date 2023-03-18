@@ -3,11 +3,13 @@ use crate::render::Cache;
 use crate::render::Dimension;
 use crate::render::{chunk, Options};
 use crate::DirContents;
+use crate::RenderType;
 use crate::FILENAME_LINE_COUNT;
 use anyhow::{bail, Context};
 use image::{ImageBuffer, Pixel, Rgb, RgbImage};
 use memmap2::MmapMut;
 use prodash::Progress;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
@@ -15,6 +17,7 @@ use syntect::parsing::SyntaxSet;
 /// Render the given files to an image. Using the given syntax, theme and render options.
 pub fn render(
     dir_content: &DirContents,
+    output_path: PathBuf,
     mut progress: impl Progress,
     should_interrupt: &AtomicBool,
     ss: &SyntaxSet,
@@ -37,8 +40,9 @@ pub fn render(
         color_modulation,
         tab_spaces,
         line_nums,
+        tiles,
     }: Options,
-) -> anyhow::Result<ImageBuffer<Rgb<u8>, MmapMut>> {
+) -> anyhow::Result<RenderType> {
     // unused for now
     // could be used to make a "rolling code" animation
     let start = std::time::Instant::now();
@@ -115,8 +119,11 @@ pub fn render(
         num_pixels
     };
 
-    let mut img = ImageBuffer::<Rgb<u8>, _>::from_raw(imgx, imgy, MmapMut::map_anon(num_pixels)?)
-        .expect("correct size computation above");
+    let mut img = if tiles {
+        RenderType::new_tilecache(output_path, imgx.try_into().unwrap())
+    } else {
+        RenderType::new_mmap_image(imgx, imgy)
+    };
 
     progress.set_name("process");
     progress.init(
@@ -260,7 +267,8 @@ pub fn render(
                             };
 
                             // create an image that fits one column
-                            let mut img = RgbImage::new(column_width * char_width, img_height);
+                            let mut img =
+                                crate::RenderType::new_image(column_width * char_width, img_height);
 
                             let relative_path = path.strip_prefix(&dir_content.parent_dir).unwrap();
                             if display_to_be_processed_file {
@@ -298,7 +306,7 @@ pub fn render(
             drop(ttx);
 
             // for each file image that was rendered by a thread.
-            for (sub_img, out, num_content_lines, lines_so_far) in trx {
+            for (mut sub_img, out, num_content_lines, lines_so_far) in trx {
                 longest_line_chars = out.longest_line_in_chars.max(longest_line_chars);
                 background = out.background;
 
@@ -317,8 +325,15 @@ pub fn render(
                     let (x_offset, line_y) = calc_offsets(lines_so_far + line);
                     for x in 0..column_width * char_width {
                         for height in 0..line_height {
-                            let pix = sub_img.get_pixel(x, line * line_height + height);
-                            img.put_pixel(x_offset * char_width + x, line_y + height, *pix);
+                            let pix = sub_img.get_pixel(
+                                x.try_into().unwrap(),
+                                (line * line_height + height).try_into().unwrap(),
+                            );
+                            img.put_pixel(
+                                (x_offset * char_width + x).try_into().unwrap(),
+                                (line_y + height).try_into().unwrap(),
+                                pix,
+                            );
                         }
                     }
                 }
@@ -347,8 +362,10 @@ pub fn render(
         for cur_line_x in 0..column_width * char_width {
             for y_pos in cur_y..cur_y + line_height {
                 img.put_pixel(
-                    cur_column_x_offset * char_width + cur_line_x,
-                    y_pos,
+                    (cur_column_x_offset * char_width + cur_line_x)
+                        .try_into()
+                        .unwrap(),
+                    y_pos.try_into().unwrap(),
                     background,
                 );
             }

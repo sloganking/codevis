@@ -104,7 +104,7 @@ impl TileCache {
         tile.put_pixel(tile_pixel_x, tile_pixel_y, pixel);
     }
 
-    fn get_pixel(&mut self, _x: i32, _y: i32) -> Rgba<u8> {
+    pub fn get_pixel(&mut self, _x: i32, _y: i32) -> Rgba<u8> {
         // let tile = self.get_tile(x / 256, y / 256);
         // tile.get_pixel((x % 256) as u32, (y % 256) as u32).clone()
         todo!();

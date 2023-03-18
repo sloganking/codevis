@@ -12,7 +12,7 @@ pub use render::function::render;
 // pub mod tilecache;
 pub use render::tilecache::TileCache;
 
-enum RenderType {
+pub enum RenderType {
     TileCache(TileCache),
     MmapImage(ImageBuffer<Rgb<u8>, MmapMut>),
     Image(ImageBuffer<Rgb<u8>, Vec<u8>>),
@@ -50,6 +50,18 @@ impl RenderType {
             }
             RenderType::MmapImage(img) => img.put_pixel(x as u32, y as u32, pixel),
             RenderType::Image(img) => img.put_pixel(x as u32, y as u32, pixel),
+        }
+    }
+
+    fn get_pixel(&mut self, x: i32, y: i32) -> Rgb<u8> {
+        match self {
+            RenderType::TileCache(cache) => {
+                let rgba_pixel = cache.get_pixel(x, y);
+                // rgba to rgb
+                Rgb([rgba_pixel[0], rgba_pixel[1], rgba_pixel[2]])
+            }
+            RenderType::MmapImage(img) => *img.get_pixel(x as u32, y as u32),
+            RenderType::Image(img) => *img.get_pixel(x as u32, y as u32),
         }
     }
 }

@@ -129,4 +129,11 @@ pub struct Args {
     /// The number of spaces that a tab character is equivalent to.
     #[clap(long, default_value_t = 4, help_heading = "IMAGE")]
     pub tab_spaces: u32,
+
+    /// Whether to render the output as a tileset.
+    /// This outputs a grid of PNG images. Instead of a single image.
+    /// This is useful for rendering large amounts of files.
+    /// That would otherwise require too much system memory to render.
+    #[clap(long, help_heading = "OUTPUT")]
+    pub tiles: bool,
 }

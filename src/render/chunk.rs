@@ -1,4 +1,5 @@
 use crate::render::{BgColor, FgColor};
+use crate::RenderType;
 use bstr::ByteSlice;
 use image::{ImageBuffer, Rgb};
 use std::ops::{Deref, DerefMut};
@@ -66,10 +67,10 @@ fn ensure_width(str: String, width: u32) -> String {
 /// This function can be used to render one file/string of text, to a single image,
 /// or called repeatedly on different files/strings, and passed the same image, to
 /// render different bodies of text in different areas of the same image.
-pub fn process<C>(
+pub fn process(
     filepath: &Path,
     content: &str,
-    img: &mut ImageBuffer<Rgb<u8>, C>,
+    img: &mut RenderType,
     mut highlight: impl FnMut(&str) -> Result<Vec<(Style, &str)>, syntect::Error>,
     Context {
         column_width,
@@ -88,11 +89,7 @@ pub fn process<C>(
         show_filenames,
         line_nums,
     }: Context,
-) -> anyhow::Result<Outcome>
-where
-    C: Deref<Target = [u8]>,
-    C: DerefMut,
-{
+) -> anyhow::Result<Outcome> {
     let mut unifont = Unifont::open();
 
     let largest_line_num_width = if line_nums {
@@ -441,19 +438,16 @@ where
     })
 }
 
-fn put_readable_char_in_image<C>(
+fn put_readable_char_in_image(
     chr: char,
     unifont: &mut Unifont,
     img_x: u32,
     img_y: u32,
-    img: &mut ImageBuffer<Rgb<u8>, C>,
+    img: &mut RenderType,
     background_color: &Rgb<u8>,
     text_color: &Rgb<u8>,
     cur_line_x: &mut u32,
-) where
-    C: Deref<Target = [u8]>,
-    C: DerefMut,
-{
+) {
     let bitmap = unifont.load_bitmap(chr.into());
 
     // get bitmap dimensions
@@ -474,21 +468,34 @@ fn put_readable_char_in_image<C>(
                 bitmap.get_bytes()[y] & (1 << (7 - x)) != 0
             };
 
-            // if not in image bounds
-            if pixel_x >= img.width() || pixel_y >= img.height() {
-                // println!(
-                //     "Skipping pixel. out of bounds: {}, {}",
-                //     img_x + x,
-                //     img_y + y as u32
-                // );
-                continue;
-            } else {
-                // set pixel in image
-                if should_pixel {
-                    img.put_pixel(pixel_x, pixel_y, *text_color);
-                } else {
-                    img.put_pixel(pixel_x, pixel_y, *background_color);
+            // skip pixel if out of bounds
+            match img {
+                RenderType::MmapImage(img) => {
+                    if pixel_x >= img.width() || pixel_y >= img.height() {
+                        continue;
+                    }
                 }
+                RenderType::Image(img) => {
+                    if pixel_x >= img.width() || pixel_y >= img.height() {
+                        continue;
+                    }
+                }
+                RenderType::TileCache(_) => {}
+            }
+
+            // set pixel in image
+            if should_pixel {
+                img.put_pixel(
+                    pixel_x.try_into().unwrap(),
+                    pixel_y.try_into().unwrap(),
+                    *text_color,
+                );
+            } else {
+                img.put_pixel(
+                    pixel_x.try_into().unwrap(),
+                    pixel_y.try_into().unwrap(),
+                    *background_color,
+                );
             }
         }
     }
@@ -501,25 +508,22 @@ fn put_readable_char_in_image<C>(
 }
 
 /// Fill the char space with a solid color.
-fn put_solid_char_in_image<C>(
+fn put_solid_char_in_image(
     img_x: u32,
     img_y: u32,
-    img: &mut ImageBuffer<Rgb<u8>, C>,
+    img: &mut RenderType,
     color: Rgb<u8>,
     line_height: u32,
     char_width: u32,
     cur_line_x: &mut u32,
-) where
-    C: Deref<Target = [u8]>,
-    C: DerefMut,
-{
+) {
     // println!("placeing char");
     // Fill the char space with a solid color.
     for y_pos in img_y..img_y + line_height {
         // println!("placing y");
         for x_pos in img_x..img_x + char_width {
             // println!("placing x");
-            img.put_pixel(x_pos, y_pos, color);
+            img.put_pixel(x_pos.try_into().unwrap(), y_pos.try_into().unwrap(), color);
         }
     }
     *cur_line_x += char_width;

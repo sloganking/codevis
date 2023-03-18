@@ -1,7 +1,7 @@
 use anyhow::Context;
 use image::{ImageBuffer, Rgb};
-use memmap2::MmapMut;
 use std::borrow::Cow;
+use std::ops::{Deref, DerefMut};
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -90,6 +90,7 @@ fn main() -> anyhow::Result<()> {
 
         let img = codevis::render(
             &dir_contents,
+            args.output_path.clone(),
             progress.add_child("render"),
             &should_interrupt,
             &ss,
@@ -116,6 +117,7 @@ fn main() -> anyhow::Result<()> {
                 ignore_files_without_syntax: args.ignore_files_without_syntax,
                 tab_spaces: args.tab_spaces,
                 line_nums: args.line_nums,
+                tiles: args.tiles,
             },
         )?;
         let img_path = if args.theme.len() == 1 {
@@ -133,18 +135,39 @@ fn main() -> anyhow::Result<()> {
             let theme_specific_path = args.output_path.with_extension(extension);
             Cow::Owned(theme_specific_path)
         };
-        sage_image(
-            img,
-            img_path.as_ref(),
-            progress.add_child(format!(
-                "saving {}",
-                img_path
-                    .as_ref()
-                    .file_name()
-                    .and_then(|f| f.to_str())
-                    .unwrap_or("")
-            )),
-        )?;
+
+        // save image
+        match img {
+            codevis::RenderType::TileCache(_) => todo!(),
+            codevis::RenderType::MmapImage(img) => {
+                sage_image(
+                    img,
+                    img_path.as_ref(),
+                    progress.add_child(format!(
+                        "saving {}",
+                        img_path
+                            .as_ref()
+                            .file_name()
+                            .and_then(|f| f.to_str())
+                            .unwrap_or("")
+                    )),
+                )?;
+            }
+            codevis::RenderType::Image(img) => {
+                sage_image(
+                    img,
+                    img_path.as_ref(),
+                    progress.add_child(format!(
+                        "saving {}",
+                        img_path
+                            .as_ref()
+                            .file_name()
+                            .and_then(|f| f.to_str())
+                            .unwrap_or("")
+                    )),
+                )?;
+            }
+        };
 
         if args.open {
             progress
@@ -165,11 +188,15 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn sage_image(
-    img: ImageBuffer<Rgb<u8>, MmapMut>,
+fn sage_image<C>(
+    img: ImageBuffer<Rgb<u8>, C>,
     img_path: &Path,
     mut progress: impl prodash::Progress,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<()>
+where
+    C: Deref<Target = [u8]>,
+    C: DerefMut,
+{
     let start = std::time::Instant::now();
     progress.init(
         Some(img.width() as usize * img.height() as usize * 3),
