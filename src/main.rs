@@ -71,6 +71,10 @@ fn main() -> anyhow::Result<()> {
         ignored = whitelist_ignored;
     }
 
+    dir_contents
+        .children_content
+        .sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+
     // log num ignored files
     if ignored != 0 {
         progress.add_child("input").info(format!(
