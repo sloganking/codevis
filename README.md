@@ -1,6 +1,12 @@
 # codevis
 
-**codevis** takes all source code / UTF-8 encodable files in a folder and renders them to one image, syntax highlighting any file it knows how to. These images show the shape and size of files, but not the exact characters inside the files. Looking for a video instead of an image? Check out this repo's sister project [codemov](https://github.com/sloganking/codemov)
+**codevis** takes all source code / UTF-8 encodable files in a folder and renders them to one image, syntax highlighting any file it knows how to. These images show the shape and size of files, but not the exact characters inside the files. 
+
+## Notes
+
+Looking for a video instead of an image? Check out this repo's sister project [codemov](https://github.com/sloganking/codemov)
+
+Also check out [codevis-gui](https://github.com/sloganking/codevis-gui)
 
 ## Renders
 
